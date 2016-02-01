@@ -1,0 +1,77 @@
+#Grid.showMap{
+	overflow: hidden; position: fixed; top: 70px; bottom: 34px; left: 280px; right: 20px;border-radius: 5px; margin: 10px 0 0 10px;
+	.nv-grid{margin: 0;}
+	.nvgrid-body{min-height:920px;}
+}
+#mask{position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 50000;}
+#updateFile{
+	display: inline-block; width: 110px; height: 35px; color: #fff; background: #00a2ff; border-radius: 5px; line-height: 35px; text-align: center;font-family:"微软雅黑";
+}
+.zoom{
+	position: absolute; right: 20px; top: 50px; z-index: 200; width: 110px;
+	.add, .shrink{width: 42px; height: 42px; margin-left: 10px;}
+	.add{.x-pic; .x-pic-addMap;}
+	.add:hover{.x-pic; .x-pic-addMap-hover;}
+	.shrink{.x-pic; .x-pic-shrinkMap;}
+	.shrink:hover{.x-pic; .x-pic-shrinkMap-hover;}
+}
+.suspend{
+	cursor: pointer; z-index: 200; position: absolute; right: 60px; bottom: 60px;
+	.showContent{width: 360px; box-shadow: none; border-bottom-right-radius: 0px; border-bottom-left-radius: 0px;}
+}
+.notCameras{ 
+	width: 190px; height: 42px; color: #fff; background: #00a2ff; border-radius: 5px; padding-left: 10px;
+	line-height: 42px; box-shadow: 1px 1px 4px #888; display: block;font-family:"微软雅黑";
+	.count{color: #FFFA39; font-weight: bold;}
+}
+.notCameras:hover{color: #fff}
+#content{
+	border: 1px solid #5edbff; color: #000; border-bottom-right-radius: 5px; border-bottom-left-radius: 5px; 
+	display: none; width: 360px; overflow: hidden;
+	.type.leaf+div{display: none;}
+	.type.leaf{background: #ccf1ff; margin-top: 1px; height: 35px; font-size: 14px; padding: 10px 10px 0;}
+	.text{vertical-align: top;color: #717171;font-size: 12px;}
+	.type.leaf.expanded+div{display: block; max-height: 120px; overflow: auto;}
+	.pic-{float: right;}
+	.type-cameras{padding: 7px 0 0 30px; background: #fff;
+		.item{float: left; width: 150px; font-size: 12px; margin: 3px 0;}
+	}
+	.hint{padding: 10px; color: #5b7f92;font-size:12px; height: 35px; display: inline-block; background: #fff; width: 100%;}
+}
+#imgFrame{overflow: hidden; position: relative; margin-top: 10px;}
+.fix{position: relative; cursor: pointer;}
+.cameraOne{
+	position: absolute; width: 28px; height: 28px; border-radius: 50%; z-index: 10;
+	.delete{.x-pic;.x-pic-zone-delete; width: 18px; height: 18px; top: -8px; left: 25px;}
+	.name{
+		top: 30px; left: 15px; white-space:nowrap; border: 1px solid #565656; padding: 2px;
+		border-radius: 3px; font-family: "宋体"; font-size: 12px;
+		background-image: -moz-linear-gradient(top, #fefeff, #e7e7f1);
+		background-image: -ms-linear-gradient(top, #fefeff, #e7e7f1);
+		background-image: -o-linear-gradient(top, #fefeff, #e7e7f1);
+		background-image: -webkit-linear-gradient(top, #fefeff, #e7e7f1);
+		background-image: linear-gradient(top, #fefeff, #e7e7f1);
+	}
+	.name, .delete{display: none; position: absolute; z-index: 20;}
+}
+.cameraOne:hover{
+	z-index: 200;
+	.name, .delete{display: block;}
+}
+.occ .cameraOne:hover{
+	.delete{display: none;}
+}
+.c20, .c31{.x-pic; .x-pic-fixed;}
+.c20:hover, .c31:hover{.x-pic; .x-pic-fixed-hover;}
+.c21, .c32{.x-pic; .x-pic-semi;}
+.c21:hover, .c32:hover{.x-pic; .x-pic-semi-hover;}
+.c22, .c33{.x-pic; .x-pic-sphere;}
+.c22:hover, .c33:hover{.x-pic; .x-pic-sphere-hover;}
+.lost{
+	margin:0 120px 3px 0; position: relative; float: left; height: 30px; width: 28px; z-index: 300; 
+	.name{display: block; position: absolute; top:6px; left: 32px; white-space: nowrap;font-size:12px;color:#5b7f92;}
+}
+.lost:hover{
+	.delete{display: none;}
+}
+.exist{opacity: 1;}

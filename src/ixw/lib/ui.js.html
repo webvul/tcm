@@ -1,0 +1,35 @@
+<script>
+var getComboHTML = NV.Lib.getComboHTML;
+
+IX.ns("TCM.Lib");
+
+var siteTypeNames = TCM.Const.SiteTypeNames;
+var siteTypeComboTpldata = IX.map(siteTypeNames, function(name, idx){
+	return {id : idx, name : name, action : "sys.changeSiteType"};
+});
+TCM.Lib.getSiteTypeComboHTML = function(id, siteType){
+	var _type = IX.isEmpty(siteType)? 3 : siteType;
+	return getComboHTML(id, {
+		value : _type, 
+		valueText : siteTypeNames[_type],
+		items : siteTypeComboTpldata
+	});
+};
+
+TCM.Lib.getRoleComboHTML = function(id, roleId, bool){
+	var roleHT = TCM.LineInfo.getRoles();
+	var role = roleHT.get(roleId);
+	var roleName = role ? role.name : "";
+	var siteType = TCM.Env.getSession().getCurrentSiteType();
+	var roleList = IX.loop(roleHT.getAll(), [], function(acc, item){
+					if (siteType == item.siteType)
+						acc.push(item);
+					return acc;
+				});
+	return getComboHTML(id, {
+		value : roleId, 
+		valueText : roleName,
+		items : bool ? roleHT.getAll() :  roleList 
+	});
+};
+</script>

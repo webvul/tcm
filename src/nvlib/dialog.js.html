@@ -1,0 +1,132 @@
+<script>
+var globalActionConfig = IXW.Actions.configActions;
+
+var dialog = null;
+function hideDialog(){if (dialog)dialog.hide();}
+var dialogCfg = null; 
+
+var confirmCfg = null;
+
+</script>
+<tpl id="modal">
+	<div class="head">{title}</div>
+	<div class="content">{content}</div>
+	<div class="foot">
+		<div class="l btns"><tpl id="lbtns">
+			<a class="btn {name}btn" data-href="$nvdialog-click" data-key="{name}">{text}</a>
+		</tpl></div>
+		<div class="r btns"><tpl id="rbtns">
+			<a class="btn {name}btn" data-href="$nvdialog-click" data-key="{name}">{text}</a>
+		</tpl></div>
+	</div>	
+</tpl>
+<tpl id="confirm">
+	<div class="area confirm"><div class="msg">{msg}</div></div>
+</tpl>
+
+<tpl id="alert">
+	<div id="nv-alert">
+		<div class="nv-alert animate-shake">
+			<div class="nv-bg alert"></div>
+			<span class="nv-close"><a data-href="$colse-alert">&times;</a></span>
+			<span class="alert-content">{content}</span>
+		</div>
+	</div>
+</tpl>
+
+<tpl id="confirmBtn">
+	<div class="confirm-btn">
+		<a data-href="$confirm.ok" class="firm firm-ok">确定</a>
+		<a data-href="$confirm.no" class="firm firm-no">取消</a>
+	</div>
+</tpl>
+<script>
+var CommonBtns = {
+	left : [],
+	right : [{name:"ok", text: "确定"}, {name:"cancel", text:"取消"}] 
+};
+globalActionConfig([["nvdialog-click",function(params,el){
+	var action = params.key;
+	if (action === "cancel")
+		return hideDialog();
+	$XF(dialogCfg, "listen." + action)();
+}],["ixw.alert.close", function(params, el){
+	jQuery($XH.ancestor(el, "ixw-alert")).removeClass("animate-shake");
+	jQuery("#IXW-alert").fadeOut();
+}],["confirm.ok", function(params, el){
+	jQuery("#IXW-alert").fadeOut();
+	confirmCfg.okFn();
+}],["confirm.no", function(params, el){
+	jQuery("#IXW-alert").fadeOut();
+}]]);
+function dialogBodyRefresh(bodyEl){
+	bodyEl.className = "ixw-body nv-dialog " + $XP(dialogCfg, "clz", "");
+	bodyEl.innerHTML = t_modal.renderData("", {
+		title : $XP(dialogCfg, "title", ""),
+		content : $XP(dialogCfg, "content", ""),
+		lbtns : $XP(dialogCfg, "btns.left", CommonBtns.left),
+		rbtns : $XP(dialogCfg, "btns.right", CommonBtns.right)
+	});
+	$XF(dialogCfg, "afterShow")(bodyEl);
+}
+
+function showDialog(cfg){
+	dialogCfg = cfg;
+	if (!dialog)
+		dialog = new IXW.Lib.ModalDialog({
+			id : "nv-dialog",
+			bodyRefresh : dialogBodyRefresh
+		});
+	dialog.show();
+}
+
+function _alert(content){
+	var alert = IXW.Lib.alert(content);
+	$XH.addClass($XH.first(alert, "ixw-alert"), "animate-shake");
+}
+
+function _confirm(cfg){
+	confirmCfg = cfg;
+	var divEl = IXW.Lib.alert(confirmCfg.content);
+	jQuery(".ixw-close").remove();
+	jQuery($XH.first(divEl, "ixw-alert")).addClass("ixw-confirm").append(jQuery(t_confirmBtn.renderData("", {})));
+	$XH.addClass($XH.first(divEl, "ixw-alert"), "animate-shake");
+}
+
+IX.ns("NV.Dialog");
+/* {
+	clz
+	title : 
+	content: 
+	btns: {left: [{name,text}], right:[{name, text}]} // default CommonBtns;
+	listen: {
+		btnname : function()
+	},
+	afterShow : function(bodyEl)
+ }*/
+NV.Dialog.show = showDialog;
+NV.Dialog.hide = hideDialog;
+NV.Dialog.confirm = function(title, msg, okFn){ showDialog({
+	title : IX.encodeTXT(title),
+	content : t_confirm.renderData("", {msg: msg}),
+	listen : { ok : function(){okFn(hideDialog);} }
+});};
+
+NV.Dialog.confirm4login = function(title, msg, btns, okFn){ showDialog({
+	title : IX.encodeTXT(title),
+	btns : btns,
+	content : t_confirm.renderData("", {msg: msg}),
+	listen : { ok : function(){okFn(hideDialog);} }
+});};
+
+NV.Dialog.alert = _alert;
+
+IX.ns("NV.Lib");
+/*
+	cfg: {
+		content
+		okFn
+	}
+ */
+NV.Lib.confirm = _confirm;
+</script>

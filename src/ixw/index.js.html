@@ -1,0 +1,392 @@
+<script>
+var isFoundInArray = IX.Array.isFound;
+var ixwPages = IXW.Pages;
+var ixwActions = IXW.Actions;
+
+var SiteTypes = TCM.Const.SiteTypes;
+var UserTypes = TCM.Const.UserTypes;
+</script>
+<tpl id="page">
+	<nav class="navbar navbar-inverse navbar-fixed-top">
+		<div class="container-fluid">
+			<div class="navbar-header">
+				<a href="#"><span class="badges"></span><span class="navbar-brand">CCTV配置管理</span></a>
+			</div>
+			<ul class="nav navbar-nav main"><tpl id="nav"><li id="nav-{name}" class="{clz}">
+				<a data-href="{href}">
+					<span class="nav-{name}"></span><span>{text}</span>
+				</a>
+				<ul class="sub"><tpl id="subnav"><li id="nav-{name}" class="{clz}">
+					<a data-href="{href}">{text}</a>
+				</li></tpl></ul>
+			</li></tpl></ul>
+			<ul class="nav navbar-nav navbar-right">
+				<li class="nowSite"><span class="name">{sitename}</span></li>
+				<li class="profile"><span class="sp"></span><span class="pic-avatar"></span><span class="name">{username}</span></li>
+				<li class="logout"><a data-href="$logout"><span class="sp"></span><span>退出</span></a></li>
+			</ul>
+
+		</div>
+	</nav>
+	<div class="bg"><div class="fix-bottom"></div></div>
+	<div id="topbar" class="hide"></div>
+	<div id="body"></div>
+</tpl>
+<tpl id="unsupportHTML">
+	<div class="bu">
+		<div class="hdrp"><i class="pic logo"></i></div>
+		<div class="content">
+			<div class="t">
+				<p>当前使用的浏览器版本过低，无法正常使用infobox服务，推荐您下载安装以下浏览器中的任一款，然后再用新浏览器访问（www.CCTVxxx.com），给您带来不便，非常抱歉。</p>
+			</div>
+			<div class="label">
+				<ul>
+					<tpl id = 'bs'>
+						<li>
+							<a class ='i {icon}'></a>
+							<span>{name}</span>
+							<a class = 'href' target="_blank" href="{href}">{href}</a>
+						</li>
+					</tpl>
+				</ul>
+			</div>
+		</div>
+	</div>
+</tpl>
+<script>
+var nvCache = (function(){
+	var _ls = window.localStorage;
+	return {
+		getItem : function(key){
+			return _ls.getItem(key) || null;
+		}, //getItem(key, isNotJSON)：取得key对应的值--null
+		setItem : function(key, value) {
+			_ls.setItem(key, value);
+		}, //setItem(key, value, isNotJSON):设置key对应的值
+		clear : function(){
+			_ls.clear();
+		}
+	};
+})();
+
+function checkBrowserIfSupport(){
+	var mainVersion = IX.isOper || IX.isChrome || IX.isSafari || IX.isFirefox;
+	var ifSupported = document.location.href.indexOf("#unSupport") > -1 ? false : !(mainVersion && IX.isBelowMSIE9);	
+	var browsers = [
+		{
+		// 	name: "IE的Chrome插件",
+		// 	href: "http://www.google.com/chromeframe?hl=zh-CN&prefersystemlevel=true",
+		// 	icon: "ie"
+		// },{
+			name: "IE10",
+			href: "http://windows.microsoft.com/zh-cn/internet-explorer/ie-10-worldwide-languages",
+			icon: "ie"
+		},{
+			name: "IE11",
+			href: "http://windows.microsoft.com/zh-cn/internet-explorer/ie-11-worldwide-languages",
+			icon: "ie"
+		},{
+			name: "Firefox",
+			href: "http://firefox.com.cn/",
+			icon: "firefox"
+		},{
+			name: "Safari浏览器",
+			href: "http://www.apple.com.cn/safari/",
+			icon: "safari"
+		},{
+			name: "chrome浏览器",
+			href: "http://rj.baidu.com/soft/detail/14744.html",
+			icon: "chrome"
+		},{
+			name: "360极速浏览器",
+			href: "http://chrome.360.cn/",
+			icon: "chrome360"
+		}
+	];
+	if (!ifSupported){
+		document.body.className = "minor browser_unsupport";
+		document.body.innerHTML = t_unsupportHTML.renderData('', {
+			bs: browsers
+		});
+	}
+
+	return ifSupported;
+}
+/** modules : ["lineInfo"]
+ */
+function SessionManager(data){
+	var sessionData = data;
+	var userName = $XP(data, "name", "");
+	var account = $XP(data, "account", "");
+	var userId = $XP(data, "id", null);
+	var siteId = $XP(data, "siteId", null);
+	var type = $XP(data, "type", 1);
+	var isSuper = type == UserTypes.Super;
+
+	var site = null, enabledModules = [];
+	function checkSite(){
+		var siteInfo = TCM.LineInfo.getSites();
+		site = siteInfo && siteInfo.get(siteId);
+		var hasOCC = false;
+		IX.iterate(siteInfo.getAll(), function(site){
+			if (site.type == SiteTypes.OCC)
+				hasOCC = true;
+		});
+		enabledModules = (isSuper && !hasOCC) || (site && site.type == SiteTypes.OCC) ? ["lineInfo"]: [];
+	}
+	checkSite();
+	nvCache.setItem("tcmSessionKey", siteId+"-"+userId);
+	return {
+		//_get: function(){return sessionData;},
+		hasAuth : function(){return userId !== null;},
+		getUserName : function(){return userName;},
+		getAccount : function(){return account;},
+		getUserId : function(){return userId;},
+		getCurrentSiteId : function(){return siteId;},
+		getCurrentSite: function(){return site;},
+		setCurrentSiteId : function(id){
+			siteId = id;
+			checkSite();
+		},
+		getSessionKey: function(){
+			return siteId+"-"+userId;
+		},
+		setUserName : function(name){
+			userName=name;
+			jQuery(".profile").children('.name').html(userName);
+		},
+		getCurrentSiteType : function(){return site ? site.type : "";},
+		isSuper : function(){return isSuper;},
+		checkIfModuleEnabled : function(module){
+			return isFoundInArray(module, enabledModules);
+		}
+	};
+}
+var sessionMgr = new SessionManager();
+
+var NavItems = [
+["sys", "系统管理", [
+	["sys-line", "线路和车站管理"],
+	["sys-role", "角色管理"],
+	["sys-level", "用户优先级定义"],
+	["sys-user", "用户管理"],
+	["sys-config", "系统设置"]
+]],
+["device", "设备管理", [
+	["device-list", "设备列表"],
+	["device-zone", "摄像机分区"],
+	["device-video", "电视墙"]
+]],
+["store", "存储管理"]
+];
+var NavItems4Super = [
+["sys", "系统管理", [
+	["sys-line", "线路和车站管理"],
+	["sys-role", "角色管理"],
+	["sys-level", "用户优先级定义"],
+	["sys-user", "用户管理"]
+]]
+];
+var DefaultNav = "sys-line";
+function NavManager(focusedNavName){
+	var focused = focusedNavName || DefaultNav;
+
+	function _getSubNavItemTplData(item){
+		var name = item[0];
+		return {
+			name : name,
+			text : item[1],
+			clz : "",
+			href: item[2] || ixwPages.createPath(name)
+		};
+	}
+	function _getNavItemTplData(item){
+		var name = item[0];
+		var subNavs = item.length>2 ? item[2] : [];
+		return {
+			name : name,
+			text : item[1],
+			clz : subNavs.length>0 ? "" : "nosub",
+			href: ixwPages.createPath(subNavs.length>0? subNavs[0][0]: name),
+			subnav : IX.map(subNavs, _getSubNavItemTplData)
+		};
+	}
+	function _focus(itemName, isFocused){
+		var arr = itemName.split("-");
+		var fn = isFocused ? $XH.addClass: $XH.removeClass;
+		if (arr.length==2) 
+			fn($X("nav-" + arr[0]), "active");
+		fn($X("nav-" + itemName), "active");
+	}
+	function focus(itemName){
+		var el = $X('nav-' + itemName);
+		if (itemName == focused || !el)
+			return;
+		_focus(focused, false);
+		focused = itemName;
+		_focus(itemName, true);
+	}
+	function enableHover(){
+		jQuery(".main li").hover(
+			function(){$XH.addClass(this, "hover");}, 
+			function(e){
+				var _this = this;
+				var pEl = $XH.ancestor(e.toElement, "ul");
+				pEl = pEl ? pEl.parentNode : null;
+				if (!$XH.hasClass(pEl, "hover"))
+					$XH.removeClass(_this, "hover");
+			}
+		);
+	}
+	return {
+		getRenderData : function(){
+			return IX.map(sessionMgr.isSuper()?NavItems4Super: NavItems, _getNavItemTplData);
+		},
+		enableHover : enableHover,
+		focus : focus
+	};
+}
+var navMgr = new NavManager();
+
+function clearSession(){
+	sessionMgr = new SessionManager();
+	TCM.LineInfo.destroy();
+	IXW.Pages.load("entry");
+}
+function startSession(data){
+	TCM.LineInfo.init(data.lineInfo);
+	sessionMgr = new SessionManager(data);
+	var nowSite=TCM.LineInfo.getSites().get(data.siteId)?TCM.LineInfo.getSites().get(data.siteId).name:"";
+	document.body.innerHTML = t_page.renderData("",{
+		nav : navMgr.getRenderData(),
+		username : data.name,
+		sitename : nowSite
+	});
+	navMgr.enableHover();
+}
+var PagesConfiurations = IX.map([
+//{type?, name+, path?, bodyClz?, needAuth?},
+{type: "ErrPage", name: "401", needAuth : false},
+{type: "ErrPage", name: "404", needAuth : false},
+
+// {name: "sys", path : "sys/line", isDefault : true},
+{name: "sys-line", isDefault : true},
+{name: "sys-role"},
+{name: "sys-level"},
+{name: "sys-user"},
+{name: "sys-config"},
+
+// {name: "device", path : "device/-/list"},
+{name: "device-list", path : "device/{type}/list"},
+{name: "device-zone", path : "device/{id}/{type}/zone"},
+{name: "device-zoneMap", path : "device/{id}/map"},
+{name: "device-video", path : "device/{type}/video"},
+
+{name: "store"}, //, path : "store/plan"},
+//{name: "store-plan"},
+
+{name: "entry", bodyClz: "entry", needAuth : false}
+], function(item){
+	var name = item.name;
+	var arr = name.split("-");
+	var moduleName = arr[0];
+	var className = item.type || moduleName.capitalize();
+	return IX.inherit({
+		initiator : "TCM." + className + ".init",
+		path : arr.join("/"),
+
+		nav : "service",
+		navItem : name,
+
+		needAuth : true
+	}, item);
+});
+
+ixwActions.configActions([["logout", function(){
+	function _okFn(){
+		TCM.Global.entryCaller("logout", {}, function(){	
+			clearSession();
+		});
+	}
+	NV.Dialog.confirm("提示", "确认是否退出?", _okFn);
+}]]);
+
+function loadSession(pageFn){
+	TCM.Global.commonCaller("session", {}, function(data){
+		if (!data || !data.id)
+			return ixwPages.load("entry");
+		startSession(data);
+		pageFn();
+	});
+}
+function checkSession(){
+	var timers = setInterval(function(){
+		var sessionKey = nvCache.getItem("tcmSessionKey");
+		if (sessionKey == sessionMgr.getSessionKey())
+			return;
+		if(sessionKey == "null-null"){
+			return NV.Dialog.confirm4login("提示", "当前用户已在其他窗口退出，请重新登录！", {
+					left : [],
+					right : [{name:"ok", text: "确定"}] 
+				}, function(){
+				loadSession(function(){
+					ixwPages.reload();
+				});
+			});
+		}
+		NV.Dialog.confirm4login("提示", "已存在登录用户，请刷新页面！", {
+				left : [],
+				right : [{name:"ok", text: "确定"}] 
+			}, function(){
+			loadSession(function(){
+				ixwPages.reload();
+			});
+		});
+	}, 3000);
+}
+
+IX.ns("TCM.Env");
+TCM.Env.init = function(){
+	ixwPages.listenOnClick(document.body);
+	ixwPages.configPages(PagesConfiurations, function(pageName, pageCfg){
+		return !$XP(pageCfg, "needAuth", true) || sessionMgr.hasAuth();
+	});
+	IXW.Navs.register("service", function(cfg){
+		navMgr.focus(cfg.navItem || "");
+	});
+	loadSession(function(){
+		ixwPages.start();
+	});
+	checkSession();
+	$Xw.bind({
+		keydown : function(e){
+			if (e.keyCode == 8 && jQuery("#nv-dialog").css('display') != 'none') {    
+				if(e.target.nodeName == "INPUT") return ;
+				IX.Util.Event.stop(e);
+			}
+		}
+	});
+};
+TCM.Env.isMe = function(userId){return userId === sessionMgr.getUserId();};
+TCM.Env.reloadSession = function(){
+	loadSession(function(){
+		ixwPages.reload();
+	});
+};
+TCM.Env.clearSession = clearSession;
+TCM.Env.hasSession = function(){return sessionMgr.hasAuth();};
+TCM.Env.resetSession = function(data){startSession(data);};
+TCM.Env.getSession = function(){return sessionMgr;};
+TCM.Env.canUpdateLineInfo = function(){
+	return sessionMgr.checkIfModuleEnabled("lineInfo");
+};
+
+var appInitialized = false;
+TCM.init = function(){
+	if (appInitialized)
+		return;
+	appInitialized = true;
+	checkBrowserIfSupport();
+	TCM.Env.init();
+};
+</script>

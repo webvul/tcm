@@ -1,0 +1,548 @@
+<script>
+var deviceCaller = TCM.Global.deviceAndZoneCaller;
+var globalActionConfig = IXW.Actions.configActions;
+var nvAlert = NV.Dialog.alert;
+</script>
+<tpl id="leafItem4Map">
+<div class="c{type} {chkClz}" data-key="{id}" data-type="{type}">
+	<div class="name">{name}</div>
+	<a class="delete" data-href="$delete.cameraXY" data-key="{id}"></a>
+</div> 
+</tpl>	
+<tpl id="nodeItem4Map">
+<div class="leaf {clz}">
+	<span class="text">{name}</span>
+	<a class="nv-collapse {expClz}" data-href="$camera.expand">
+		<span class="pic-"></span></a>
+</div>
+</tpl>
+
+<tpl id="dragTree">
+<tpl id="types">
+	<use id=".nodeItem4Map" data='{clz: "type", key:"type"}'>
+	<div class="node type-cameras {clz}"><tpl id="items">
+		<use id=".leafItem4Map" data='{clz: "item", key:"{id}"}'>
+	</tpl></div>
+</tpl>
+</tpl>
+
+<script>
+var DevTypes = TCM.Const.DeviceTypes;
+var DevNames = ["枪机", "球机", "半球机"];
+var UploadClz = null;
+var view = null;
+var baseDrag = {
+	revert: "invalid",
+	start: dragToggle,
+	stop: function(event, ui){
+		sendData(event, ui, this, "editDeviceOfMap");
+	}
+};
+function getTypeIdx(cameraType){
+	switch(cameraType){
+		case DevTypes.IPCFixed:
+		case DevTypes.CameraFixed: return 0;
+		case DevTypes.IPCSphere:
+		case DevTypes.CameraSphere: return 1;
+		case DevTypes.IPCSemiSphere:
+		case DevTypes.CameraSemiSphere: return 2;
+	}
+	return 0;
+}
+
+function getCameraTpldatData4Map(cameras, type){
+	var types = [[],[],[]]; // 0 :枪机， 1:球机， 2:半球机
+	IX.iterate(cameras, function(c){
+		var typeIdx = getTypeIdx(c.type);
+		var cid = c.id;
+		types[typeIdx].push({
+			type : c.type,
+			chkClz: "lost",
+			id : c.id,
+			name: c.name
+		});
+	});
+	return IX.loop(types, [], function(acc, typeData, idx){
+		if (typeData.length===0) return acc;
+		acc.push({
+			clz : "cameras"+idx,
+			expClz : "expanded",
+			name : DevNames[idx],
+			items : typeData
+		});
+		return acc;
+	});
+}
+
+function getCamera4Map(cameras, types){
+	var typeData = getCameraTpldatData4Map(cameras, types);
+	return t_dragTree.renderData("", {
+		types: typeData
+	});
+}
+
+function _init(){
+	if (UploadClz)
+		return;
+	UploadClz = IXW.Lib.FileUploader;
+	if (!TCM.Global.filUploadUrl)
+		return nvAlert("没有配置检索图片上传路径，文件无法上传");
+	UploadClz.init(TCM.Global.filUploadUrl);
+}
+
+/**  
+ * id :  dom btn ID, // required
+ */
+function FileUploadBtn(id, afterLoaded, url){
+	_init();
+	var fileUploader = null, ifUploading = false; 
+	function onchangeFn(fileEl){
+		var file = (fileEl && "files" in fileEl) ? fileEl.files[0] : null;
+		if (file && file.type.indexOf("image")<0)
+			return nvAlert("这里只能上传图片，谢谢！");
+		if (file && file.size > 1024*1024*100)
+			return nvAlert("请不要上传大于 100MB 的图片，谢谢！");
+		ifUploading = true;
+		jQuery('<div id="mask"></div>').appendTo(jQuery(document.body));
+		IXW.Lib.info("正在上传地图，请稍等...", "exist", -1);
+		fileUploader.submit(function(data){
+			ifUploading = false;
+			if (data.message){
+				jQuery("#mask").remove();
+				jQuery(".ixw-info").remove();
+				nvAlert(data.message);
+				return;
+			}
+			afterLoaded(data);
+		});
+	}
+	var cfg = {
+		trigger : id,
+		onchange : onchangeFn
+	};
+	if (IX.isString(url))
+		cfg.fileUploadURL = url;
+	fileUploader = new UploadClz(cfg);
+	var zoneId = jQuery(".chooseBar").attr("data-zoneid");
+	jQuery("form").append('<input type="hidden" name="zoneId" value="'+ zoneId +'">');
+}
+</script>
+<tpl id="camera">
+	<div class="cameraOne c{type}" data-key="{id}" data-type="{type}" style="top: {y}px; left: {x}px;">
+		<div class="name">{name}</div>
+		<a class="delete" data-href="$delete.cameraXY" data-key="{id}"></a>
+	</div> 
+</tpl>
+
+<tpl id="mapPage">
+<a id="updateFile">选择地图文件</a>
+<div class="zoom">
+	<a data-href="$img.shrink" class="shrink"></a>
+	<a data-href="$img.add" class="add"></a>
+</div>
+<div class="suspend">
+	<a class="notCameras">未指定坐标的摄像机&nbsp;<span class="count"></span></a>
+	<div id="content" class="tri-title"></div>
+</div>
+<div id="imgFrame">
+	<div class="fix">
+		<img id="image" src="{imgURL}"><tpl id="cameras">
+			<use id=".camera"></tpl>
+	</div>
+</div>
+</tpl>
+
+<script>
+globalActionConfig([["delete.cameraXY", function(params, el){
+	var key = params.key;
+	deviceCaller("deleteDeviceOfMap", {id: key}, function(data){
+		jQuery(el.parentNode).remove();
+		view.deleteCamera(key);
+		setCount(1);
+	});
+}],["img.add", function(params, el){
+	view.zoom(1);
+}],["img.shrink", function(params, el){
+	view.zoom(0);
+}]]);
+/*
+	data: {
+		width,
+		height,
+		url,
+		cameras: [{id, name, x, y, type}]
+	}
+ */
+function mapModel(data){
+	var width = data.width;
+	var height = data.height;
+	var url = data.url;
+	var cameras = data.cameras || [];
+	function _editCamera(camera){
+		for (var i = 0; i < cameras.length; i++) {
+			if(cameras[i].id == camera.id){
+				cameras[i].x = camera.x;
+				cameras[i].y = camera.y;
+				return;
+			}
+		}
+	}
+	return {
+		getData: function(){return {
+			width: width,
+			height: height,
+			url: url,
+			cameras: cameras
+		};},
+		resetData: function(newData){
+			width = newData.width;
+			height = newData.height;
+			url = newData.url;
+		},
+		editCamera: _editCamera,
+		addCamera: function(camera){cameras.push(camera);},
+		deleteCamera: function(id){
+			for (var i = 0; i < cameras.length; i++) {
+				if(cameras[i].id == id)
+					return cameras.splice(i, 1);
+			}
+		}
+	};
+}
+/*
+	viewData = data
+ */
+function viewData4Show(viewData, mapEl){
+	var positionHT = {}, widthMax, heightMax;
+	var widthMap, widthFrame, centerX;
+	var heightMap, heightFrame, centerY;
+	var scrolling = false, isSmall = false;
+	var mapData = new mapModel(viewData);
+	var $fix = jQuery(".fix");
+	var $imgFrame = jQuery("#imgFrame");
+	var $zoom = jQuery(".zoom");
+	var $suspend = jQuery(".suspend");
+
+	function resize(isOCC){
+		var clientHeight = $X('Grid').clientHeight;
+		$X('Tree').style.height = clientHeight + "px";
+		if($X("imgFrame"))
+			$X('imgFrame').style.height = clientHeight - 110 + "px";
+		widthFrame = $imgFrame.width();
+		heightFrame = $imgFrame.height();
+		centerX = widthFrame/2;
+		centerY = heightFrame/2;
+		$fix.css("top", "0px");
+		if(!isOCC)
+			jQuery(".nv-tree").css("maxHeight", clientHeight - 85 + "px");
+		else
+			jQuery(".nv-tree").css("maxHeight", clientHeight - 55 + "px");
+	}
+	function setPosition(){
+		$fix.css({
+			width: widthMap + "px",
+			height: heightMap + "px",
+	    	left: -1 * (centerX - widthFrame/2) + "px",
+	    	top: mapEl.height < heightFrame ? ((heightFrame - heightMap)/2 + "px") : (-1 * (centerY - heightFrame/2) + "px")
+	    });
+		jQuery(".cameraOne").each(function(){
+			var id = $XD.dataAttr(this, "key");
+			jQuery(this).css({
+				top: Math.floor(positionHT[id].multipleY * heightMap) + "px",
+				left: Math.floor(positionHT[id].multipleX * widthMap) + "px"
+			});
+		});
+	}
+	function zoom(status){
+		if(!$X("image").src)
+			return;
+		var w, h;
+		if(status === 1){
+			w = Math.min(widthMap * 1.2, widthMax);
+			h = Math.min(heightMap * 1.2, heightMax);
+		}else{
+		    w = Math.max(widthMap * 0.8, widthFrame);
+		    h = heightMap * 0.8;
+		    if(w == widthFrame)
+		        h = heightMax * w / widthMax; // 保证缩放比例
+		}
+		if(h < heightFrame)
+			isSmall = true;
+		else
+			isSmall = false;
+	    centerX = Math.min(Math.max(centerX * w / widthMap, widthFrame/2), widthMap - widthFrame/2);
+	    centerY = Math.min(Math.max(centerY * h / heightMap, heightFrame/2), heightMap - heightFrame/2);
+	    widthMap = mapEl.width = w;
+	    heightMap = mapEl.height = h;
+	    setPosition();
+	}
+	function scrollIt(event){
+	    if(scrolling)
+	        return true;
+	    scrolling = true;
+	    if(event.wheelDelta > 0 || event.detail < 0)
+	        zoom(1);
+	    else
+	        zoom(0);  
+	    scrolling = false;
+	    event.returnValue = false;
+	}
+	function _initData(){
+		var _data = mapData.getData();
+		widthMax = _data.width;
+		heightMax = _data.height;
+		widthMap = widthMax;
+		heightMap = heightMax;
+		widthFrame = $imgFrame.width();
+		heightFrame = $imgFrame.height();
+		centerX = widthFrame/2;
+		centerY = heightFrame/2;
+		IX.iterate(_data.cameras, function(camera, idx){
+			var minWidth = Math.min(_data.width - 40, camera.x);
+			var minHeight = Math.min(_data.height - 40, camera.y);
+			positionHT[camera.id] = {top: minHeight, left: minWidth, multipleX: minWidth / widthMax, multipleY: minHeight / heightMax};
+		});
+		setPosition();
+	}
+	function resetCamera(camera, name){
+		positionHT[camera.id] = {top: camera.y, left: camera.x, multipleX: camera.x / widthMax, multipleY: camera.y / heightMax};
+		mapData[name](camera);
+	}
+	_initData();
+	return {
+		resetCamera: function(camera, name){ resetCamera(camera, name);},
+		deleteCamera: function(id){
+			positionHT[id] = "";
+			mapData.deleteCamera(id);
+		},
+		refresh: function(newData){
+			mapData.resetData(newData);
+			_initData();
+			setPosition();
+		},
+		scrollIt: scrollIt,
+		zoom: zoom,
+		resize: resize,
+		resetCenter: function(x, y){
+			centerX = x;
+			centerY = y;
+		},
+		ratioX: function(){return widthMax/widthMap;},
+		ratioY: function(){return heightMax/heightMap;},
+		isSmall: function(){return isSmall;},
+		widthFrame: function(){return widthFrame;},
+		heightFrame: function(){return heightFrame;}
+	};
+}
+
+function sendData(event, ui, self, caller){
+	var $this = jQuery(self);
+	var params = {
+		id: $this.attr("data-key"),
+		x: Math.floor(parseInt($this.css("left")) * view.ratioX()),
+		y: Math.floor(parseInt($this.css("top")) * view.ratioY())
+	};
+	deviceCaller(caller, params, function(data){
+		if(caller == "addDeviceOfMap"){
+			view.resetCamera(params, "addCamera");
+			jQuery(".suspend").css({visibility:"visible"});
+			return;
+		}
+		view.resetCamera(params, "editCamera");
+		dragToggle();
+	});
+}
+function dragToggle(){
+	jQuery(".suspend").fadeToggle(200);
+}
+function bindDrag(isOCC){
+	if(!isOCC)
+		jQuery(".cameraOne").draggable(baseDrag);
+
+	jQuery(".fix").droppable().draggable({
+		stop: function(event, ui){
+			var $this = jQuery(this);
+			var thisWidth = Math.floor($this.width()) - view.widthFrame();
+			var thisHeight = Math.floor($this.height()) - view.heightFrame();
+			if(view.isSmall())
+				$this.css({top: Math.min(Math.max(0, ui.position.top), -1 * (thisHeight - 1)) + "px"});
+			else
+				$this.css({top: Math.min(Math.max(-1 * (thisHeight - 1), ui.position.top), 0) + "px"});
+			$this.css({left: Math.min(Math.max(-1 * (thisWidth - 1), ui.position.left), 0) + "px"});
+			view.resetCenter(-1 * parseInt($this.css("left")) + view.widthFrame()/2, -1 * parseInt($this.css("top")) + view.heightFrame()/2);
+		}
+	});
+	jQuery(".suspend").draggable({
+		containment: "parent"
+	});
+}
+
+function bindCamera4Drag(){
+	var offsetX, offsetY;
+	jQuery(".lost").draggable({
+		helper: "clone",
+		start: function(event, ui){
+			offsetX = event.offsetX;
+			offsetY = event.offsetY;
+			jQuery(".suspend").css({visibility: "hidden"});
+			ui.helper.css("visibility", "visible");
+		},
+		stop: function(event, ui){
+			var $this = jQuery(this);
+			var $parent = jQuery(this.parentNode);
+			var el = jQuery(".fix").get(0).getBoundingClientRect();
+			$this.removeClass('lost')
+				.addClass('cameraOne')
+				.appendTo(".fix")
+				.attr({"style": 
+					"top:"+Math.min(Math.max(0, event.pageY - el.top - offsetY), el.height-34)+"px; left:"+Math.min(Math.max(0, event.pageX - el.left - offsetX), el.width-34)+"px;"
+				});
+			$this.draggable("destroy");
+			if($parent.find(".lost").length === 1){
+				if($parent.parent().find(".lost").length === 1)
+					$parent.parent().get(0).innerHTML = '<span class="hint">没有未指定坐标的摄像机！</span>';
+				$parent.prev().remove();
+				$parent.remove();
+			}
+			sendData(event, ui, this, "addDeviceOfMap");
+			setTimeout(function(){
+				jQuery(".fix>:last").draggable(baseDrag);
+			}, 0);
+			setCount(-1);
+		}
+	});
+}
+
+function showTigger(params){
+	deviceCaller("getCamerasNotInMap", params, function(data){
+		initCameraCount(data.length || 0);
+		var cameraRefreshHTML = getCamera4Map(data, [20,21,22,31,32,33]);
+		if(!cameraRefreshHTML)
+			cameraRefreshHTML = '<span class="hint">没有未指定坐标的摄像机！</span>';
+		var bodyEl = $X("content");
+		bodyEl.innerHTML = "<div>"+cameraRefreshHTML+"</div>";
+		IX.bind($XD.first(bodyEl, "div"), {
+			click : function(e){
+				if ($XD.ancestor(e.target, "a")) return;
+				var el = $XH.ancestor(e.target, "type");
+				jQuery(el).siblings(".type").removeClass("expanded");
+				$XH.toggleClass(el, "expanded");
+			}
+		});
+		bindCamera4Drag();
+	});
+}
+
+function initMap(initData, mapEl){
+	mapEl.width = initData.width;
+	mapEl.height = initData.height;
+	if(!view)
+		view = new viewData4Show(initData, mapEl);
+	else
+		view.refresh(initData);
+}
+
+function bindFn(params, mapEl, isOCC){
+	if (IX.isFirefox)
+		mapEl.addEventListener("DOMMouseScroll", view.scrollIt, false);
+	else
+		mapEl.onmousewheel = view.scrollIt;
+	var $notCameras = jQuery(".notCameras");
+	var $suspend = jQuery(".suspend");
+	var $content = jQuery("#content");
+	$suspend.hover(function(e){
+		if(!$XH.hasClass($notCameras.get(0), "showContent")){
+			showTigger(params);
+			$suspend.animate({opacity: 0.01}, 200, function() {
+				$notCameras.addClass("showContent");
+				$content.css({display: "block"});
+				jQuery(this).animate({opacity: 1}, 200);
+			});
+		}
+	});
+	IX.bind(jQuery(".nvgrid-body").get(0), {
+		click: function(e){
+			if($XH.ancestor(e.target, "suspend")) return;
+			if($XH.hasClass($notCameras.get(0), "showContent")){
+				$suspend.animate({opacity: 0.01}, 200, function() {
+					$notCameras.removeClass("showContent");
+					$content.css({display: "none"});
+					jQuery(this).animate({opacity: 1}, 200);
+				});
+			}
+		}
+	});
+	bindDrag(isOCC);
+	$Xw.bind({"resize": function(){
+		view.resize(isOCC);
+	}});
+}
+
+function initCameraCount(count){
+	jQuery(".notCameras .count").html("("+count+")");
+}
+
+function setCount(num){
+	var $count = jQuery(".notCameras .count");
+	var str = $count .html();
+	$count.html("("+(Number(str.slice(1, str.length-1)) + num)+")");
+}
+
+function Map(container, params, isOCC){
+	function _show(data, clientHeight){
+		$X(container).innerHTML = t_mapPage.renderData("", {
+			imgURL: "",
+			cameras: data.cameras || []
+		});
+		deviceCaller("getCamerasNotInMap", params, function(result){
+			initCameraCount(result.length || 0);
+		});
+		$X('imgFrame').style.height = clientHeight - 110 + "px";
+		var mapEl = $X("image");
+		var initData = data;
+		var isBind = false;
+		mapEl.onload = function(){
+			initMap(initData, mapEl);
+			jQuery("#mask").remove();
+			if(isBind) return;
+			bindFn(params, mapEl, isOCC);
+			isBind = true;
+		};
+		mapEl.src = data.url ? TCM.Global.getMapUrl(data.url) : "";
+		if(isOCC){
+			jQuery(".suspend").css("display", "none");
+			jQuery("#updateFile").css("visibility", "hidden");
+			jQuery(".showMap").addClass("occ");
+			return;
+		}
+		FileUploadBtn('updateFile', function(result){
+			initData = result;
+			mapEl.src = TCM.Global.getMapUrl(result.url);
+			IXW.Lib.info("地图上传成功！");
+		}, TCM.Global.filUploadUrl);
+	}
+	return {
+		show: function(){
+			var clientHeight = $X('Grid').clientHeight;
+			$X('Tree').style.height = clientHeight + "px";
+			deviceCaller("getMap", params, function(data){
+				if(!data.url){
+					if(isOCC){
+						jQuery(".nvgrid-body").html("");
+						return nvAlert("该分区暂未上传地图！");
+					}else
+						nvAlert("地图不存在，请上传地图！");
+				}
+				_show(data, clientHeight);
+			});
+		}
+	};
+}
+</script>
+<script>
+IX.ns("TCM.Lib");
+TCM.Lib.Map = function(container, params, isOCC){
+	view = null;
+	return new Map(container, params, isOCC);
+};
+</script>

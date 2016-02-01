@@ -1,0 +1,150 @@
+<script>
+var globalActionConfig = IXW.Actions.configActions;
+var driverId = TCM.Const.DriverId;
+</script>
+<tpl id="leafItem">
+<div class="leaf {clz}">
+	<a class="nv-checkbox {chkClz}" data-href="${action}" data-key="{key}">
+		<span class="ixpic-"></span><span class="text">{name}</span></a>
+</div>
+</tpl>	
+
+<tpl id="combo">
+	<span class="dropdown">
+		<input type="hidden" id="{valueId}" value="{value}">
+		<button class="dropdown-toggle" type="button" id="{comboId}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+			<span class="name">{valueText}</span><span class="pic-"></span>
+		</button>
+		<ul class="dropdown-menu" aria-labelledby="{comboId}"><tpl id="items"><li class="{clz}">
+			<a data-href="${action}" data-key="{id}">{name}</a>
+		</li></tpl></ul>
+	</span>
+</tpl>
+
+<tpl id="radioCombo" export="nvRadio">
+	<span class="dropdown">
+		<input type="hidden" id="{valueId}" value="{value}">
+		<button class="dropdown-toggle" type="button" id="{comboId}" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+			<span class="name">{valueText}</span><span class="pic-"></span>
+		</button>
+		<div class="dropdown-menu {dropdownClz}" aria-labelledby="{comboId}">
+		<tpl id="items">
+			<use id=".leafItem" data='{clz: "item", key: "{id}", action: "{action}"}'>
+		</tpl>
+		</div>
+	</span>
+</tpl>
+
+<tpl id="checkbox">
+	<input type="hidden" id="{valueId}" value="{value}">
+	<a class="nv-checkbox {clz}" data-href="${action}">
+		<span class="ixpic-"></span><span>{text}</span></a>
+</tpl>
+
+
+<script>
+globalActionConfig([["nvcombo.pick", function(params,el){
+	var id = params.key, name = el.innerHTML;
+	// driver关联设备类型为20,21,22,50的用户名与密码端口号
+	if(jQuery(".IPC-edit").length > 0 || jQuery(".coder-edit").length > 0){
+		switch(id){
+			case driverId.DH_host_IPC :
+			case driverId.DH_host_coder :
+				setParams("admin", "admin", "37777");
+				break;
+			case driverId.YS_host_IPC :
+			case driverId.YS_host_coder :
+				setParams("admin", "admin", "0");
+				break;
+			case driverId.AXS_rtsp_IPC :
+			case driverId.AXS_rtsp_coder :
+				setParams("root", "pass", "554");
+				break;
+			case driverId.DH_rtsp_IPC :
+			case driverId.DH_rtsp_coder :
+			case driverId.YS_rtsp_IPC :
+			case driverId.YS_rtsp_coder :
+				setParams("admin", "admin", "554");
+				break;
+			case driverId.AVS_IPC :
+			case driverId.AVS_coder :
+				setParams("admin", "admin", "4060");
+				break;
+			case driverId.NKF_rtsp_IPC :
+			case driverId.NKF_rtsp_coder :
+				setParams("admin", "", "554");
+				break;
+			default :
+				setParams("admin", "admin", "");
+				break;
+		}
+	}
+	if (jQuery(".decoder-edit").length > 0) {
+		if (id == driverId.JS_decoder) {
+			setParams("admin", "admin", "6000");
+		}
+	}
+	// 关联结束
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	inputEl.value = id;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
+}],["nvcheckbox.check", function(params,el){
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH[ifChecked?"addClass":"removeClass"](el, "selected");
+	var inputEl = $XD.first(el.parentNode, "input");
+	inputEl.value = ifChecked;
+}],["nvradiocombo.pick", function(params, el){
+	var nodeEls = jQuery(".dropdown-menu").children(".leaf");
+	nodeEls.each(function(){
+		jQuery(this).children('.nv-checkbox').removeClass('selected');
+	});
+	$XH.toggleClass(el, "selected");
+	var id = params.key, name = jQuery(el).children(".text").html();
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	inputEl.value = id;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
+}]]);
+function setParams(name, pass, port){
+	jQuery("#device_username").attr("value",name);
+	jQuery("#device_password").attr("value",pass);
+	jQuery("#device_port").attr("value",port);
+}
+
+function getComboHTML(id, cfg, action){return t_combo.renderData("", IX.inherit({
+	valueId : id,
+	comboId : id + "_combo"
+}, cfg)).replaceAll("{action}", action ? action : "nvcombo.pick");}
+
+function getRadioComboHTML(id, cfg){return t_radioCombo.renderData("", IX.inherit({
+	valueId : id,
+	comboId : id + "_radioCombo"
+}, cfg)).replaceAll("{action}", "nvradiocombo.pick");}
+
+
+function getCheckBoxHTML(id, value, text, actionName){return t_checkbox.renderData("", {
+	valueId : id, 
+	value : value,
+	text: text,
+	clz : value ?"selected": ""
+}).replaceAll("{action}", actionName ? actionName : "nvcheckbox.check");}
+
+IX.ns("NV.Lib");
+/**  (id, cfg : {
+	value :
+	valueText:
+	items :[{id, name[, action]}]
+	
+})
+ */ 
+NV.Lib.getComboHTML = getComboHTML;
+NV.Lib.getRadioComboHTML = getRadioComboHTML;
+/**   (id, value, text[,actionName])
+ */ 
+NV.Lib.getCheckboxHTML = getCheckBoxHTML;
+</script>

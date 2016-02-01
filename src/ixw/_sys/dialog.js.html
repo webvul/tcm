@@ -1,0 +1,557 @@
+<script>
+var sysCaller = TCM.Global.sysCaller;
+var globalActionConfig = IXW.Actions.configActions;
+
+var showDialog = NV.Dialog.show;
+var hideDialog = NV.Dialog.hide;
+var confirmDialog = NV.Dialog.confirm;
+var nvAlert = NV.Dialog.alert;
+var ixwInfo = IXW.Lib.info;
+var ixwPages = IXW.Pages;
+
+var getCheckboxHTML = NV.Lib.getCheckboxHTML;
+var getComboHTML = NV.Lib.getComboHTML;
+var getSiteTypeComboHTML = TCM.Lib.getSiteTypeComboHTML;
+var getRoleComboHTML = TCM.Lib.getRoleComboHTML;
+var cameraTree = TCM.Lib.CameraTree;
+
+</script>
+<tpl id="deleteMsg">
+	确认要删除这{count}吗？<br>
+</tpl>	
+<script>
+function _deleteUnits(rowModels, cfg, okFn){
+	var n =  rowModels.length, names = [];
+	var ids = IX.map(rowModels, function(r){
+		names.push(r.get("name"));
+		return r.getId();
+	});
+	confirmDialog(cfg.title, t_deleteMsg.renderData("",{
+		count : n + cfg.unitName
+	}),  function(cbFn){
+		sysCaller(cfg.callerName, {ids : ids}, function(){
+			cbFn();
+			okFn();
+		});
+	});
+}
+function checkChinese(s){
+	var re = /[^\u4E00-\u9FA5]+/g; 
+	return re.test(s);
+}
+function verifyForm(value, msg, name){
+	if(name == "no"){
+		var _value = checkIfInt(value);
+		if (!_value){
+			nvAlert("请输入有效的数字编号！");
+			return false;
+		}
+	}
+	if(name == "password" && value !== ""){
+		var value1 = checkChinese(value);
+		if (!value1){
+			nvAlert("密码不允许出现汉字！");
+			return false;
+		}
+	}
+	return true;
+}
+function checkIfInt(s){
+	var re = /^\d+$/;
+	return re.test(s);
+}
+function checkSiteName(siteName){
+	var reg = /^([A-Z]|[0-9]|[\u4E00-\u9FA5])*$/;
+	var flag = reg.test(siteName);
+	if(flag){
+		return true;
+	}else{
+		nvAlert("站点名只允许为大写英文，数字和汉字的混合!");
+		return false;
+	}
+}
+function gatherInfo(rowModel, checkers){
+	var data = {}, ifChanged = false,typeChange = false;
+	for (var i=0; i<checkers.length; i++){
+		var checker = checkers[i];
+		var val = $X(checker.key).value;
+		if(val == "null"){
+			nvAlert(checker.empty);
+			return false;
+		}
+		if (checker.type  == "bool")
+			val = val == "true";
+		if (IX.isEmpty(val) && !IX.isEmpty(checker.empty)) {
+			nvAlert(checker.empty);
+			return false;
+		}
+		if (!verifyForm(val, checker.empty,checker.name))
+			return false;
+		ifChanged = ifChanged || !(rowModel && rowModel.get(checker.name) == val);
+		if(rowModel && rowModel.get(checker.name) != val && checker.key=="site_type" && jQuery(".sys-editSite").length > 0){
+			typeChange=true;
+		}
+		IX.setProperty(data, checker.name, val);
+	}
+	if (!ifChanged){
+		ixwInfo("您未作任何修改，请点击取消关闭编辑窗口！");
+		return false;
+	}
+	if (rowModel) 
+		data.id = rowModel.getId();
+	data.typeChange=typeChange;
+	return data ;
+}
+function _editUnit(rowModel, cfg, okFn){
+	var checkers = cfg.checkers;
+	function _okFn(){
+		var info = gatherInfo(rowModel, checkers);
+		if(cfg.clz == "sys-editSite" && info.name){
+			var result = checkSiteName(info.name);
+			if(!result)
+				{return false;}
+		}
+		var checkFn = $XP(cfg, "checkInfo");
+		if (!info || (IX.isFn(checkFn) && !checkFn(info))) return;
+		sysCaller(cfg.callerName, info, function(data){
+			if(rowModel && rowModel.getId() == TCM.Env.getSession().getCurrentSiteId() && jQuery(".sys-editSite").length > 0){
+				jQuery(".nowSite").children(".name").html(info.name);
+			}
+			hideDialog();
+			var id = "id" in info ? info.id : data.id;
+			okFn({ids : [id]});
+			if(info.typeChange){
+				TCM.Env.reloadSession();
+			}
+		});
+	}
+	var data = {};
+	for (var i=0; i<checkers.length; i++){
+		var checker = checkers[i];
+		var type=checker.type;
+		var value =  rowModel ? (rowModel.get(checker.name) || rowModel.get(checker.name)===0 ? rowModel.get(checker.name) : "") : "";
+		data[checker.key] = type=="bool"? value : (value+"").dehtml();
+	}
+	showDialog({
+		clz : cfg.clz,
+		title : cfg.title,
+		content : cfg.tpl.renderData("", cfg.tpldataFn(rowModel, data)),
+		listen : {ok : _okFn}
+	});
+}
+
+IX.ns("TCM.SysDialog");
+</script>
+<tpl id="editSite">
+<ul>
+	<li><span class="label">编号</span>
+		<span><input id="site_no" maxlength="8" value="{site_no}"></span></li>
+	<li><span class="label">名称</span>
+		<span><input id="site_name" maxlength="32" value="{site_name}"></span></li>
+	<li><span class="label">类型</span>{siteId}{siteTypeCombo}</li>
+	<li><span class="label">说明</span>
+		<span><input id="site_desc" maxlength="150" value="{site_desc}"></span></li>
+</ul>
+</tpl>
+<tpl id="setSite">
+	<ul>
+		<li><span class="warn">只能修改一次，请慎重！(修改后需重新登录)</span></li>
+		<li id="site-set"><span>当前单位</span>{siteCombo}</li>
+	</ul>
+</tpl>
+<script>
+var SiteDialogCfg = {
+	clz : "sys-editSite",
+	tpl : t_editSite,
+	tpldataFn : function(rowModel, data){
+		data.siteTypeCombo = getSiteTypeComboHTML("site_type", data.site_type);
+		data.siteId = '<input id="site_id" type="hidden" value="' + data.site_id + '">';
+		return data;
+	},
+	checkers : [
+		{name : "no", key : "site_no", empty: "请输入单位编号！"}, 
+		{name : "name", key: "site_name", empty : "请输入单位名称！"},
+		{name : "desc", key: "site_desc", empty : ""},
+		{name : "type", key: "site_type", empty : ""},
+		{name : "id", key: "site_id", empty : ""}
+	]
+};
+TCM.SysDialog.editSite = function(rowModel, okFn){
+	_editUnit(rowModel, IX.inherit(SiteDialogCfg, {
+		title : "编辑单位",
+		callerName : "editSite"
+	}), okFn);
+};
+TCM.SysDialog.createSite = function(okFn){
+	_editUnit(null, IX.inherit(SiteDialogCfg, {
+		title : "新建单位",
+		callerName : "createSite"
+	}), okFn);
+};
+TCM.SysDialog.deleteSites = function(rowModels, okFn){
+	_deleteUnits(rowModels, {
+		title : "删除单位", 
+		unitName : "个单位",
+		callerName : "deleteSites"
+	}, okFn);
+};
+TCM.SysDialog.setCurrentSite = function(params,el,data){
+	function _okFn(){
+		var curSiteId = $X('setSite').value - 0;
+		if(curSiteId){
+			sysCaller("setCurrentSite", {id : curSiteId}, function(){
+				hideDialog();
+				TCM.Global.entryCaller("logout", {}, function(){	
+					TCM.Env.clearSession();
+				});	
+			});
+		}else{
+			nvAlert("设置当前站点失败，不能为空！");
+		}
+	}
+	showDialog({
+		clz : "",
+		title : "设置",
+		content :t_setSite.renderData("",{
+			siteCombo: getComboHTML("setSite", {
+				value : "",
+				valueText : "",
+				items : IX.map(data, function(site){
+					return {
+						id: site.id, 
+						name: site.name
+					};
+				})
+			})
+		}),
+		listen : {ok : _okFn}
+	});
+};
+</script>
+<tpl id="editRole">
+<ul>
+	<li><span class="label">角色名称</span>
+		<span><input id="role_name" maxlength="32" value="{role_name}"></span></li>
+	<li><span class="label">所属单位类型</span>{siteTypeCombo}</li>
+	<li>{rolePromptableCheckBox}</li>
+</ul>
+</tpl>
+<script>
+var RoleDialogCfg = {
+	clz : "sys-editRole",
+	tpl : t_editRole,
+	tpldataFn : function(rowModel, data){
+		data.siteTypeCombo = getSiteTypeComboHTML("site_type", data.site_type);
+		data.rolePromptableCheckBox = getCheckboxHTML(
+			"role_promptable", 
+			!!data.role_promptable,
+			"特殊情况下允许启动临时授权"
+		);
+		return data;
+	},
+	checkers : [
+		{name : "name", key: "role_name", empty : "请输入角色名称！"},
+		{name : "siteType", key: "site_type", empty : "请确定角色适用的人员所在单位！"},
+		{name : "promptable", key: "role_promptable", type : "bool", empty : ""}
+	]
+};
+TCM.SysDialog.editRole = function(rowModel, okFn){
+	_editUnit(rowModel, IX.inherit(RoleDialogCfg, {
+		title : "编辑用户角色",
+		callerName : "editRole"
+	}), okFn);
+};
+TCM.SysDialog.createRole = function(okFn){
+	_editUnit(null, IX.inherit(RoleDialogCfg, {
+		title : "新建用户角色",
+		callerName : "createRole"
+	}), okFn);
+};
+TCM.SysDialog.deleteRoles = function(rowModels, okFn){
+	_deleteUnits(rowModels, {
+		title : "删除角色", 
+		unitName : "个角色",
+		callerName : "deleteRoles"
+	}, okFn);
+};
+</script>
+<tpl id="editLevel">
+<ul>
+	<li><span class="label">类别</span><span class="level">{level}</span></li>
+	<li><span class="label">对应角色（车站)</span>{stationRoleCombo}</li>
+	<li>{stationPromptedCheckbox}</li>
+	<li><span class="label">对应角色（车辆段）</span>{depotRoleCombo}</li>
+	<li>{depotPromptedCheckbox}</li>
+</ul>
+</tpl>
+<script>
+var LevelDialogCfg = {
+	clz : "sys-editLevel",
+	tpl : t_editLevel,
+	tpldataFn : function(rowModel, data){
+		data.level = rowModel.get("name");
+		data.stationRoleCombo = getRoleComboHTML("station_role", data.station_role, true);
+		data.stationPromptedCheckbox = getCheckboxHTML(
+			"station_prompted", 
+			!!data.station_prompted,
+			"需要启动临时授权"
+		);
+		data.depotRoleCombo = getRoleComboHTML("depot_role", data.depot_role, true);
+		data.depotPromptedCheckbox = getCheckboxHTML(
+			"depot_prompted", 
+			!!data.depot_prompted,
+			"需要启动临时授权"
+		);
+		return data;
+	},
+	checkers : [
+		{name : "station.id", key: "station_role", empty : "请选择车站对应的角色！"},
+		{name : "station.prompted", key: "station_prompted", type : "bool", empty : ""},
+		{name : "depot.id", key: "depot_role", empty : "请选择车辆段对应的角色！"},
+		{name : "depot.prompted", key: "depot_prompted", type : "bool", empty : ""}
+	]
+};
+TCM.SysDialog.editLevel = function(rowModel, okFn){
+	_editUnit(rowModel, IX.inherit(LevelDialogCfg, {
+		title : "编辑用户优先级",
+		callerName : "editUserLevel"
+	}), okFn);
+};
+</script>
+<tpl id="editUser">
+<ul class="{clz}">
+	<li><span class="label">所属单位</span>
+		<input type="hidden" id="user_site" value="{user_site}"><span>{siteName}</span></li>
+	<li><span class="label">分类</span>{userTypeCombo}</li>
+	<li><span class="label">用户名</span>
+		<span><input id="user_name" maxlength="32" value="{user_name}"></span></li>
+	<li><span class="label">登录账号</span>
+		<span><input id="user_account" maxlength="32" value="{user_account}"></span></li>
+	<li class="pwd"><span class="label">登录密码</span>
+		<span><input maxlength="16" id="user_pwd"></span></li>
+	<li class="role"><span class="label">用户角色</span>{roleCombo}</li>
+	<li><span class="label">说明</span>
+		<span><input id="user_desc" maxlength="150" value="{user_desc}"></span></li>
+</ul>
+</tpl>
+<script>
+globalActionConfig([["sys.changeUserType", function(params, el){
+	var type = params.key, name = el.innerHTML;
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	inputEl.value = type;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
+	var ulEl = $XD.ancestor(dropdownEl, "ul");
+	ulEl.className = type == 1 ? "isAdmin" : "isUser";
+}],["sys.changeSiteType", function(params, el){
+	var type = params.key, name = el.innerHTML;
+	var flag = jQuery(".sys-editSite").length > 0 && jQuery(".head").text()=="编辑单位" && jQuery(".sys-editSite .dropdown").find("input").attr("value") != type;
+	if(flag){
+		sysCaller("hasData", {
+			id : $X("site_id").value,
+			toType : type
+		}, function(data){
+			if (data.msg)
+				return nvAlert(data.msg);
+			baseChageCombo(type, name, el);
+		});
+	}else{
+		baseChageCombo(type, name, el);
+	}
+}]]);
+function baseChageCombo(type, name, el){
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	inputEl.value = type;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
+}
+var UserTypeNames = TCM.Const.UserTypeNames;
+var userTypeComboTpldata = IX.map(UserTypeNames, function(name, idx){
+	return {id : idx, name : name, action : "sys.changeUserType"};
+});
+userTypeComboTpldata.shift();
+function getUserTypeComboHTML(id, userType){
+	var _type = IX.isEmpty(userType)? 2 : userType;
+	return getComboHTML(id, {
+		value : _type, 
+		valueText : UserTypeNames[_type],
+		items : userTypeComboTpldata
+	});
+}
+
+function getRootUserComboHTML(id, userType){
+	var _type = IX.isEmpty(userType)? 1 : userType;
+	var arr = [];
+	arr.push(userTypeComboTpldata[0]);
+	return getComboHTML(id, {
+		value : _type, 
+		valueText : UserTypeNames[_type],
+		items : arr
+	});
+}
+
+var UserDialogCfg = {
+	clz : "sys-editUser",
+	tpl : t_editUser,
+	tpldataFn : function(rowModel, data){
+		var isSuper = TCM.Env.getSession().isSuper();
+		data.user_desc = data.user_desc || "";
+		data.user_site = data.user_site || TCM.Env.getSession().getCurrentSiteId();
+		data.siteName = TCM.LineInfo.getSiteName(data.user_site);
+		data.userTypeCombo = isSuper ? getRootUserComboHTML("user_type", data.user_type) : getUserTypeComboHTML("user_type", data.user_type);
+		data.clz = isSuper?"isAdmin":(data.user_type == 1 ? "isAdmin" : "isUser");
+		data.roleCombo = getRoleComboHTML("user_role",  data.user_role, false);
+		return data;
+	},
+	checkers : [
+		{name : "siteId", key : "user_site", empty : ""},
+		{name : "type", key: "user_type", empty : ""},
+		{name : "name", key: "user_name", empty : "请输入用户名称！"},
+		{name : "account", key: "user_account", empty : "请确定用户登录账号！"},
+		{name : "role", key: "user_role", empty : ""},
+		{name : "password", key: "user_pwd", empty : ""},
+		{name : "desc", key: "user_desc", empty : ""}
+	]
+};
+TCM.SysDialog.editUser = function(rowModel, okFn){
+	_editUnit(rowModel, IX.inherit(UserDialogCfg, {
+		checkInfo : function(info){
+			if (info.type==2 && info.role===""){
+				nvAlert("普通用户必须赋予角色以便确定操作权限！");
+				return false;
+			}
+			if(info.account==TCM.Env.getSession().getAccount()){
+				TCM.Env.getSession().setUserName(info.name);
+			}
+			return true;
+		},
+		title : "编辑用户",
+		callerName : "editUser"
+	}), okFn);
+};
+TCM.SysDialog.createUser= function(okFn){
+	_editUnit(null, IX.inherit(UserDialogCfg, {
+		checkInfo : function(info){
+			if (info.type==2 && info.role===""){
+				nvAlert("普通用户必须赋予角色以便确定操作权限！");
+				return false;
+			}
+			if (IX.isEmpty(info.password)){
+				nvAlert("请输入用户的初始密码！");
+				return false;
+			}
+			return true;
+		},
+		clz : "sys-editUser sys-createUser",
+		title : "新建用户",
+		callerName : "addUser"
+	}), okFn);
+};
+TCM.SysDialog.deleteUsers = function(rowModels, okFn){
+	_deleteUnits(rowModels, {
+		title : "删除用户", 
+		unitName : "个用户",
+		callerName : "deleteUsers"
+	}, okFn);
+};
+</script>
+<tpl id="chgpwd">
+<ul>
+	<li><span class="label">新密码</span><span><input id="user_pwd" value=""></span></li>
+</ul>
+</tpl>
+
+<tpl id="chgpriv">
+	<div class="cameras">
+		<h6>允许查看实时视频</h6>
+		<div id="vsvTree" class="camera-tree vsv">{cameraTree4VSV}</div>
+		<h6>允许云台控制</h6>
+		<div id="ptzcTree" class="camera-tree ptzc">{cameraTree4PTZC}</div>
+	</div>
+	<div class="vra">{vraCheckbox}</div>
+</tpl>
+<script>
+TCM.SysDialog.chgpwd = function(rowModel){
+	var userName = rowModel.get("name");
+	var userType = rowModel.get("type");
+
+	function _okFn(){
+		var newPwd = jQuery.trim($X('user_pwd').value);
+		if (IX.isEmpty(newPwd)) 
+			return nvAlert("用户密码不能设置为空！");
+		if(!verifyForm(newPwd,"","password"))
+			return;
+		sysCaller("resetPwd", {id : rowModel.getId(), password: newPwd}, function(){
+			ixwInfo("密码修改成功！");
+			hideDialog();
+		});
+	}
+	showDialog({
+		clz : "sys-chgpwd",
+		title : "修改" + TCM.Const.UserTypeNames[userType] + '"' + userName + '"的登录密码',
+		content :t_chgpwd.renderData(""),
+		listen : {ok : _okFn}
+	});
+};
+TCM.SysDialog.chgpriv = function(rowModel){
+	var siteHT = TCM.LineInfo.getSites();
+	var id = rowModel.getId();
+	var userName = rowModel.get("name");
+	var access = rowModel.get("access");
+	var hasAcc=true;
+	function _okFn(){
+		sysCaller("resetPriv", {
+			id : id, 
+			access : JSON.stringify({
+				vsv : cameraTree.getCameraAccess($X("vsvTree")),
+				ptzc : cameraTree.getCameraAccess($X("ptzcTree")),
+				vra : $X("priv_vra").value == "true"
+			})
+		}, function(){
+			ixwInfo("修改权限成功！");
+			hideDialog();
+		});
+	}
+	function toggleFn(e){
+		if ($XD.ancestor(e.target, "a")) return;
+		var el = $XH.ancestor(e.target, "leaf");
+		if (el) {
+			if($XH.hasClass(el, "site") && !el.nextSibling)
+				return NV.Dialog.alert("该站点下无分区或分区下无相应摄像机，不能展开！");
+			$XH.toggleClass(el, "expanded");
+			$XH.toggleClass($XH.first(el, "nv-collapse"), "expanded");
+		}
+	}
+	sysCaller("getAllCameras", {}, function(cameras){
+		sysCaller("getUserPriv", {id:id}, function(access){
+			showDialog({
+				clz : "sys-chgpriv",
+				title : '用户管理/权限配置',
+				content :t_chgpriv.renderData("", {
+					cameraTree4VSV : cameraTree.getCameraTreeHTML(cameras, $XP(access, "vsv", []), siteHT, false),
+					cameraTree4PTZC : cameraTree.getCameraTreeHTML(cameras, $XP(access, "ptzc",  []), siteHT, true),
+					vraCheckbox :getCheckboxHTML( "priv_vra", $XP(access, "vra"), "允许录像文件检索与回放")
+				}),
+				listen : {ok : _okFn}
+			});
+			IX.bind(jQuery(".cameras").get(0), {
+				click : toggleFn
+			});
+			if(access && access.vsv == "all"){
+				jQuery("#vsvTree").find(".nv-checkbox").each(function(){
+					jQuery(this).addClass('selected');
+				});
+			}
+			if(access && access.ptzc == "all"){
+				jQuery("#ptzcTree").find(".nv-checkbox").each(function(){
+					jQuery(this).addClass('selected');
+				});
+			}
+		});
+	});
+};
+</script>

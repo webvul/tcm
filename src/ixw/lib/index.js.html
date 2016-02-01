@@ -1,0 +1,450 @@
+<script>
+var storeCaller = TCM.Global.storeCaller;
+var globalActionConfig = IXW.Actions.configActions;
+
+var showDialog = NV.Dialog.show;
+var hideDialog = NV.Dialog.hide;
+var confirmDialog = NV.Dialog.confirm;
+
+var getCheckboxHTML = NV.Lib.getCheckboxHTML;
+var getComboHTML = NV.Lib.getComboHTML;
+var getCheckboxAllHTML = NV.Lib.getCheckboxAllHTML;
+var getCheckBoxDaysHTML = NV.Lib.getCheckBoxDaysHTML;
+var cameraTree = TCM.Lib.CameraTree;
+
+var CircleComboItem = [
+	{id : 7, name : "7天"},
+	{id : 15, name : "15天"},
+	{id : 30, name : "30天"}
+];
+var DaysComboItem = [
+	{id : 0, name : "周日"},
+	{id : 1, name : "周一"},
+	{id : 2, name : "周二"},
+	{id : 3, name : "周三"},
+	{id : 4, name : "周四"},
+	{id : 5, name : "周五"},
+	{id : 6, name : "周六"}
+];
+</script>
+<tpl id="edit">
+<div class="lt">
+	<div class="edit-head"><span class="label">名称</span><input id="plan_name" value="{plan_name}"></span></div>
+	<h3><span class="label">录像时间计划表</span></h3>
+	<ul>
+		<li><span class="label">录像周期</span>{circleCombo}</li>
+		<li class="days-choose"><span class="label">星期</span>
+			<span id="plan_daysCombo">
+				<span id="daysName"><tpl id="dayitems">
+					<div id="day{id}" class="day">
+						<a class="nv-checkbox" data-href="$store.deletedDay" data-key="{id}">
+							<span class="text">{name}</span><span class="ixpic-"></span></a></div>
+					</tpl>	
+				</span>
+				<a data-href="$store.popDays"><span class="pic-"></span></a>
+			</span>
+		</li>
+		<li><span class="label">时间段</span>
+			<span><input id="plan_from" value="{plan_from}"></span>
+			<span class="separator">--</span>
+			<span><input id="plan_to" value="{plan_to}"></span>
+		</li>
+	</ul>
+	<h3><span class="label">当前车站的存储设备</span></h3>
+	<div id="storages"><tpl id="ss">
+		<a class="nv-checkbox {clz}" data-href="$store.checkToggle" data-key="{id}">
+			<span class="ixpic-"></span><span>{name}</span></a>
+	</tpl></div>
+</div>
+<div class="rt">
+	<div class="edit-head"><span class="label">车站</span><input disabled value="{siteName}"></span></div>{showDevices}</div>
+</tpl>
+
+<tpl id="showCameras">
+	<h3><span class="label">计划中的录像机</span></h3>
+	<div class="showCamera">{showCamera}</div>
+	<div class="more">
+		<span>新增需要录像的摄像机</span>
+		<a id="addCamera" data-href="$store.addCamera"><span class="add">+</span></a>
+	</div>
+</tpl>
+
+<tpl id="showMonitors">
+	<h3><span class="label">已在录像的图像</span></h3>
+	<div class="showMonitor">{showMonitor}</div>
+</tpl>
+
+<tpl id="dropdownMenu">
+	<div class="node">
+		<a class="nv-checkbox {clz}" data-href="$store.checkAll" data-key="all">
+			<span class="ixpic-"></span><span class="text">{name}</span></a>
+	</div><tpl id="items">
+		<div class="leaf ">
+			<a class="nv-checkbox {clz}" data-href="$store.checkOne" data-key="{id}">
+				<span class="ixpic-"></span><span class="text">{name}</span></a>
+		</div>
+	</tpl>
+</tpl>
+<script>
+var isOCC = null;
+var camerasHTML = '<div class="node show-cameras0"></div><div class="node show-cameras1"></div><div class="node show-cameras2"></div>';
+var cameraRefreshHTML = null;
+var caseDaysPanel = new IXW.Lib.PopTrigger({
+	id : "caseDaysPanel",
+	ifKeepPanel : function(target){
+		return !!$XH.ancestor(target, "days-choose") || !!$XH.ancestor(target, "ixw-pop");
+	},
+	bodyRefresh : function(bodyEl, triggerEl){
+		var _value = getCurrentDaysValueFn();
+		bodyEl.innerHTML = t_dropdownMenu.renderData("",{
+			clz : _value ? (_value.length === 7 ? "selected" : "") : "",
+			name : "全周",
+			items : _value ? getSelect(_value, DaysComboItem) : DaysComboItem
+		});
+	}
+});
+
+var caseCameraPanel = new IXW.Lib.PopTrigger({
+	id : "caseCameraPanel",
+	ifKeepPanel : function(target){
+		return !!$XH.ancestor(target, "showCamera") || !!$XH.ancestor(target, "ixw-pop") || !!$XH.ancestor(target, "more");
+	},
+	bodyRefresh : function(bodyEl, triggerEl){
+		bodyEl.innerHTML = cameraRefreshHTML;
+	}
+});
+function getCurrentDaysValueFn(){
+	var days = jQuery("#daysName").find(".nv-checkbox");
+	var value = [];
+	days.each(function(){
+		value.push($XD.dataAttr(this,"key"));
+	});
+	return value ? (value == "all"? [0,1,2,3,4,5,6] : value) : null;
+}
+
+function getCameraValueFn(value){
+	cameraRefreshHTML = cameraTree.getCamera4TypesHTML(value, [20,21,22,31,32,33], "cameras.move");
+}
+
+globalActionConfig([["store.checkToggle", function(params, el){
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH[ifChecked?"addClass":"removeClass"](el, "selected");
+}],["store.deletedDay", function(params, el){
+	jQuery(el).remove();
+}],["store.popDays", function(params, el){
+	caseDaysPanel.trigger($X("plan_daysCombo"));
+}],["store.checkAll", function(params, el){
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH[ifChecked?"addClass":"removeClass"](el, "selected");
+	if(ifChecked){
+		$X("daysName").innerHTML = t_edit.renderData("dayitems", {
+			id : "all",
+			name : "全周"
+		});
+		jQuery($XH.ancestor(el, "ixw-body")).find(".nv-checkbox").addClass("selected");
+	}else{
+		$X("daysName").innerHTML = "";
+		jQuery($XH.ancestor(el, "ixw-body")).find(".nv-checkbox").removeClass("selected");
+	}
+}],["store.checkOne", function(params, el){
+	var id = params.key;
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH[ifChecked?"addClass":"removeClass"](el, "selected");
+	if(ifChecked){
+		jQuery("#daysName").append(jQuery(t_edit.renderData("dayitems", {
+			id : id,
+			name : jQuery(el).find(".text").html()
+		})));
+	}else{
+		var parent = jQuery("#daysName");
+		parent.find("#day"+id).remove();
+		var all = jQuery(".ixw-body").find(".node").find(".nv-checkbox");
+		if($XH.hasClass(all.get(0), "selected")){
+			var arr = [0,1,2,3,4,5,6];
+			var week = ["周日","周一","周二","周三","周四","周五","周六"];
+			arr.splice(id, 1);
+			week.splice(id, 1);
+			all.removeClass("selected");
+			parent.html("");
+			IX.iterate(arr, function(day, idx){
+				parent.append(jQuery(t_edit.renderData("dayitems", {
+					id : day,
+					name : week[idx]
+				})));
+			});
+		}
+	}
+}],["store.addCamera", function(params, el){
+	caseCameraPanel.trigger(jQuery(".more").get(0));
+}],["cameras.move", function(params, el){
+	var id = params.key, isEmpty = false, isAdd = false, theNew = null;
+	var theClass = null, cameraNode = null;
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH.toggleClass(el, "selected");
+	if ($XH.hasClass(el.parentNode, "item")) {
+		var parent = jQuery(el.parentNode.parentNode);
+		var brother = parent.find(".nv-checkbox");
+		theClass = parent.attr("class");
+		cameraNode = jQuery(".show-cameras"+theClass[theClass.length-1]);
+		brother.each(function(){
+			if(!$XH.hasClass(this, "selected")){
+				isEmpty = true;
+			}
+		});
+		cameraNode.find(".newCamera").each(function(){
+			if(jQuery(this).attr("data-key") == id ){
+				isAdd = true;
+				theNew = jQuery(this);
+			}
+		});
+		if (isEmpty)
+			parent.prev().find(".nv-checkbox").removeClass("selected");
+		if(ifChecked){
+			if(!isAdd){
+				var oldLeaf = jQuery(el.parentNode);
+				var leaf = oldLeaf.clone();
+				leaf.find(".nv-checkbox").attr('data-href', '$store.checkToggle').addClass('newCamera');
+				cameraNode.append(leaf);
+			}else{theNew.addClass('selected');}			
+		}else{
+			if(theNew)
+				theNew.removeClass('selected');
+		}
+	}else {
+		var nodeEl = jQuery(el.parentNode).next();
+		nodeEl.find(".nv-checkbox")[ifChecked?"addClass":"removeClass"]("selected");
+		theClass = nodeEl.attr("class");
+		cameraNode = jQuery(".show-cameras"+theClass[theClass.length-1]);
+		if(ifChecked){
+			nodeEl.find(".nv-checkbox").each(function(){
+				var keyNode = jQuery(this);
+				cameraNode.find(".newCamera").each(function(){
+					if(keyNode.attr("data-key") == jQuery(this).attr("data-key"))
+						jQuery(this).remove();
+				});
+			});
+			nodeEl.find(".item").each(function(){
+				var cc = jQuery(this).clone();
+				cc.find(".nv-checkbox").attr('data-href', '$store.checkToggle').addClass('newCamera');
+				cameraNode.append(cc);
+			});
+		}else{
+			cameraNode.find(".newCamera").each(function(){
+				jQuery(this).removeClass("selected");
+			});	
+		}
+	}
+}]]);
+
+function _show(site, okFn, data){
+	var circle = null;
+	var days = null;
+	var storagesValue = null;
+	if(data){
+		IX.iterate(CircleComboItem, function(item){
+			if (data.circle == item.id) 
+				circle = item.name;
+		});
+		IX.iterate(DaysComboItem, function(item){
+			if (data.days == item.id) 
+				days = item.name;
+		});
+		storagesValue = IX.map(data.storages, function(storages){
+			return storages.id;
+		});
+	}
+	storeCaller("getDevices4Plan", {id: site.id}, function(result){
+		var data2Show = {
+			siteName : site.name,
+			plan_name : data ? data.name : "新录像计划",
+			circleCombo : getComboHTML("plan_circle", {
+				value : data ? data.circle : 30,
+				valueText : circle ? circle : "",
+				items : CircleComboItem
+			}),
+			dayitems : data ? (data.days == "all" || data.days == [0,1,2,3,4,5,6] ? [{id: "all", name: "全周"}] : getDays(data.days, DaysComboItem)) : "",
+			plan_from : data ? data.from : "",
+			plan_to : data ? data.to : "",
+			ss : data ? getSelect(storagesValue, result.storages) : result.storages
+		};
+		var html = t_edit.renderData("", isOCC ? IX.inherit(data2Show,{
+			showDevices : t_showMonitors.renderData("",{
+				showMonitor : data && result.monitors.length !== 0 ? cameraTree.getMonitor4HTML(/*data.monitors*/Test.getCamerasByNoZone()) : camerasHTML
+			})
+		}) : IX.inherit(data2Show,{
+			showDevices : t_showCameras.renderData("",{
+				showCamera : data && result.cameras.length === 0 ? cameraTree.getCamera4HTML(/*data.cameras*/Test.getCamerasByNoZone(), [20,21,22,31,32,33]) : camerasHTML
+			})
+		}));
+		showDialog({
+			clz : "store-edit",
+			title : data ? "编辑录像计划" : "新增录像计划",
+			content : html,
+			listen : {ok : _okFn}
+		});
+		if(!isOCC)
+			getCameraValueFn(/*result.cameras*/Test.getCamerasByNoZone());
+		function _okFn(){
+			var inputData = {};
+			var dayNodes = jQuery("#daysName").find(".nv-checkbox");
+			if(dayNodes.length == 1 || dayNodes.attr('data-key') == "all"){
+				inputData.days = "all";
+			}else{
+				var arr = [];
+				dayNodes.each(function(){
+					arr.push(jQuery(this).attr('data-key'));
+				});
+				inputData.days = arr;
+			}
+			inputData.name = $X("plan_name").value;
+			inputData.circle = $X("plan_circle").value;
+			inputData.from = $X("plan_from").value;
+			inputData.to = $X("plan_to").value;
+			var storageNodes = jQuery("#storages").find(".nv-checkbox");
+			inputData.storages = [];
+			storageNodes.each(function(){
+				inputData.storages.push(jQuery(this).attr('data-key'));
+			});
+			var openNodes = jQuery(".showCamera").find(".nv-checkbox");
+			if(isOCC){
+				inputData.monitors = [];
+				openNodes.each(function(){
+					inputData.monitors.push(jQuery(this).attr('data-key'));
+				});
+			}else{
+				inputData.cameras = [];
+				openNodes.each(function(){
+					inputData.cameras.push(jQuery(this).attr('data-key'));
+				});
+			}
+			if(data){
+				inputData.id = data.id;
+				storeCaller("editPlan", inputData, function(){
+					okFn(inputData);
+					hideDialog();
+				});
+			}else{
+				storeCaller("addPlan", inputData, function(result2Show){
+					okFn(result2Show);
+					hideDialog();
+				});
+			}
+		}
+	});
+}
+function _editPlan(plan, okFn){
+	var isEdit = plan !== null;
+	var site = TCM.Env.getSession().getCurrentSite();
+	if(isEdit){
+		storeCaller("getPlan", {id : plan.id}, function(data){
+			_show(site, okFn, data);
+		});
+	}else{
+		_show(site, okFn);
+	}
+}
+
+function getSelect(ids, devices){
+	return IX.map(devices, function(device){
+		return IX.inherit(device, {
+			clz : IX.Array.isFound(device.id, ids) ? "selected" : ""
+		});
+	});
+}
+function getDays(ids, DaysComboItem){
+	return IX.loop(ids, [], function(acc, id){
+		IX.iterate(DaysComboItem, function(day){
+			if (day.id == id) 
+				acc.push(day);
+		});
+		return acc;
+	});
+}
+
+</script>
+<tpl id="deleteMsg">
+	请确认是否删除录像计划： <br><span >{name}</span>
+</tpl>	
+<tpl id="page">
+<div class="nv-box">
+	<div class="nv-title">录像计划</div>
+	<ul class="store-plans"><tpl id="plans">
+		<li><a data-href="$store.edit" data-key="{id}">
+			<div class="pic-">
+				<div><span class="label">存储设备：</span><span>{ssNames}</span></div>
+				<div><span class="label">保存周期：</span><span>{circle}天</span></div>
+				<div><span class="label">日期计划：</span><span>{days}</span></div>
+				<div><span class="label">录像时间：</span><span>从{from}至{to}</span></div>
+			</div>
+			<div class="name">{name}</div>
+		</a><a class="pic-del" data-href="$store.delete" data-key="{id}">
+		</a></li>
+	</tpl>
+		<li><a class="add" data-href="$store.add">
+			<div class="pic-"></div>
+			<div class="name">添加录像计划</div>
+		</a></li>
+	</ul>
+</div>
+</tpl>
+<script>
+var planHT = new IX.IListManager();
+function getPlanTpldata(plan){
+	var planDays = plan.days;
+	return IX.inherit(plan, {
+		days : planDays == "all" ?"全周": IX.map(planDays, function(n){
+			return TCM.Const.Days[n] || "";
+		}).join(),
+		ssNames : plan.storages.join()
+	});
+}
+
+globalActionConfig([["store.add", function(params, el){
+	_editPlan(null, function(plan){
+		planHT.register(plan.id, plan);
+		var html = t_page.renderData("plans", getPlanTpldata(plan));
+		jQuery(html).insertBefore(el.parentNode);
+	});
+}], ["store.edit", function(params, el){
+	var planId = params.key;
+	var plan = planHT.get(planId);
+	if (!plan)
+		return;
+	_editPlan(plan, function(_plan){
+		planHT.register(plan.id, _plan);
+		var html = t_page.renderData("plans", getPlanTpldata(_plan));
+		el.parentNode.innerHTML = html.substring("<li>".length, html.length-"</li>".length);
+	});
+}], ["store.delete", function(params, el){
+	var planId = params.key;
+	var plan = planHT.get(planId);
+	if (!plan)
+		return;
+	confirmDialog("删除录像计划", t_deleteMsg.renderData("",{
+		name : plan.name
+	}),  function(cbFn){
+		storeCaller("deletePlan", {ids : [plan.id]}, function(){
+			planHT.remove(planId);
+			var liEl = el.parentNode;
+			liEl.parentNode.removeChild(liEl);
+			hideDialog();
+		});
+	});
+}]]);
+
+
+IX.ns("TCM.Store");
+TCM.Store.init = function(pageCfg, pageParams, cbFn){
+	isOCC = TCM.Env.getSession().getCurrentSiteType() == 1 ? true : false;
+	planHT.clear();
+	storeCaller("getPlans", {}, function(plans){
+		var tpldatas = IX.map(plans, function(plan){
+			planHT.register(plan.id, plan);
+			return getPlanTpldata(plan);
+		});
+
+		$X('body').innerHTML = t_page.renderData("", {plans : tpldatas});
+		cbFn();
+	});
+};
+</script>

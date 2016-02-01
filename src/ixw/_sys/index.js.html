@@ -1,0 +1,628 @@
+<script>
+var sysCaller = TCM.Global.sysCaller;
+var globalActionConfig = IXW.Actions.configActions;
+var lineInfo = TCM.LineInfo;
+var TCMGrid =  TCM.Lib.Grid;
+var sysDialog = TCM.SysDialog;
+var nvAlert = NV.Dialog.alert;
+var ixwInfo = IXW.Lib.info;
+var session = null;
+var siteType = null;
+var isOCC = null;
+/** cfg :{
+	container : "body"
+	title : 
+	clz :
+	hasCheckbox: need "_checkbox"	
+	usePagination : false,
+	columns: []
+	actions :[]
+	buttons : []
+	listeners : {}
+	dataLoader : function(params,_cbFn)
+}
+*/
+function createSysGrid(cfg, checkEditable){
+	var editable = !checkEditable || TCM.Env.canUpdateLineInfo();
+	var columns = (editable && cfg.hasCheckbox ?["_checkbox"]:[]).concat(cfg.columns.split(","));
+	var buttons = editable ? ["refresh"].concat($XP(cfg,"buttons", [])):["refresh"];
+	return new TCMGrid($XP(cfg, "container", 'body'), {
+		title : $XP(cfg, "title", ""),
+		rowModel : $XP(cfg, "rowModel"),
+		grid : {
+			clz : $XP(cfg, "clz", ""),
+			columns : columns,
+			actions : editable ? $XP(cfg, "actions", []) :[],
+			usePagination : cfg.usePagination || false,
+			dataLoader : $XF(cfg, "dataLoader")
+		},
+		tools : {buttons : buttons},
+		listen : cfg.listeners || {}
+	});
+}
+
+function afterLoadLineInfo(data){
+	lineInfo.setName(data.name);
+	var sitesHT = lineInfo.getSites();
+	var sites = data.sites;
+	sitesHT.refresh(sites);
+
+	refreshSysLineInfo(sites);
+	return sites;
+}
+
+var GridCfgs = {
+	line : {
+		container : "sysline-grid", 
+		title : "线路和车站管理",
+		clz : "sys-line",
+		hasCheckbox: true,
+		columns: "siteNo,name,siteType,desc",
+		buttons : ["create","delete"],
+		dataLoader : function(params, _cbFn){
+			sysCaller("getLineInfo", {}, function(data){
+				var sites = afterLoadLineInfo(data);
+				_cbFn({total: sites.length, items: sites});
+			});
+		}
+	},
+	role : {
+		title : "角色管理",
+		clz : "sys-role",
+		hasCheckbox: true,
+		columns: "roleName,roleType,rolePromptable",
+		buttons : ["create","delete"],
+		dataLoader : 	function(params, _cbFn){
+			sysCaller("getUserRole", {}, function(data){
+				var roleHT = lineInfo.getRoles();
+				roleHT.refresh(data.items);
+				_cbFn(data);
+			});
+		}
+	},
+	level : {
+		title : "用户优先级定义",
+		clz : "sys-level",
+		columns: "levelName,station,depot",
+		buttons : [],
+		dataLoader : function(params, _cbFn){
+			sysCaller("getUserLevel", {}, function(data){
+				var levelHT = lineInfo.getLevels();
+				levelHT.refresh(data.items);
+				_cbFn(data);
+			});
+		}
+	},
+	user : {
+		title : "用户管理",
+		clz : "sys-user",
+		hasCheckbox: true,
+		usePagination : true,
+		columns: "userName,account,utype,userSite,userRole,desc",
+		buttons : ["create", "delete"],
+		dataLoader : function(params, _cbFn){
+			sysCaller("getUsers", params, function(data){
+				_cbFn(data);
+				jQuery("ul[data-id="+TCM.Env.getSession().getUserId()+"]").find("a.act-delete").hide();
+			});
+		}
+	}
+};
+</script>
+<tpl id="syslineInfo">
+	<div class="l icon">
+		<div class="pic-"></div><div>线路信息</div>
+	</div>
+	<div class="l text">
+		<div>
+			<span class="label">线路名称：</span>
+			<input id="lineName" disabled="true" value="{value}">
+		</div>
+		<div>
+			<span class="label">当前单位：</span>
+			<input class="siteName" disabled="true" value="{currentSiteName}">
+			<a class="setSite" data-href="$sys.setCurrentSite"></a>
+		</div>	
+	</div>
+</tpl>
+<tpl id="sysline">
+	<div class="sys-info"></div>
+	<div id="sysline-grid"></div>
+</tpl>
+<script>
+var curLineName = null;
+var curSiteId = null;
+function getCurrentSiteName(){
+	return IX.encodeTXT(lineInfo.getSiteName(curSiteId));
+}
+function refreshSysLineInfo(sites){
+	var infoEl = $XH.first($X('body'), 'sys-info');
+	if (!infoEl)
+		return;
+	infoEl.innerHTML = t_syslineInfo.renderData("", {
+		value : IX.encodeTXT(curLineName),
+		currentSiteName : getCurrentSiteName()
+	});
+	if(getCurrentSiteName()){
+		jQuery(".setSite").css("display","none");
+	}
+}
+
+globalActionConfig([["sys.setCurrentSite", function(params, el){
+	var data=TCM.LineInfo.getSites().getAll();
+	TCM.SysDialog.setCurrentSite(params,el,data);
+}]]);
+function showSysLine(cbFn){
+	var grid = null;
+	curLineName = lineInfo.getName();
+	curSiteId = session.getCurrentSiteId();
+	$X('body').innerHTML = t_sysline.renderData("");
+	grid = createSysGrid(IX.inherit(GridCfgs.line, {
+		actions : [ "delete",["edit", "编辑", function(rowModel, rowEl){
+			sysDialog.editSite(rowModel, function(){
+				grid.refresh();
+			});
+		}]],
+		listeners : {
+			createItem : sysDialog.createSite,
+			deleteItems : sysDialog.deleteSites
+		}
+	}), true);
+	cbFn();
+}
+
+function showSysRole(cbFn){
+	var grid = null;
+	grid = createSysGrid(IX.inherit(GridCfgs.role, {
+		actions : ["delete", ["edit", "编辑", function(rowModel, rowEl){
+			sysDialog.editRole(rowModel, function(){
+				grid.refresh();
+			});
+		}]],
+		listeners : {
+			createItem : sysDialog.createRole,
+			deleteItems : sysDialog.deleteRoles
+		}
+	}), true);
+	cbFn();
+}
+
+function showSysLevel(cbFn){
+	var grid = null; 
+	grid = createSysGrid(IX.inherit(GridCfgs.level, {
+		actions : [["edit", "编辑", function(rowModel, rowEl){
+			sysDialog.editLevel(rowModel, function(){
+				grid.refresh();
+			});
+		}]]
+	}), true);
+	cbFn();
+}
+
+function UserRowModel(rowData, colModels, actions, moreActions){
+	var row = new IXW.Lib.GridModel.RowModelBase(rowData, colModels, actions, moreActions);
+	return IX.inherit(row, {
+		getTpldata : function(){
+			var tpldata = row.getTpldata();
+			tpldata.clz = row.get("type") == 2 ? "isUser" : "";
+			return tpldata;
+		}
+	});
+}
+function showUsers(cbFn){
+	var grid = null;
+    var SiteId = session.getCurrentSiteId();
+        if(SiteId === -1){
+        	nvAlert("未设置当前站点，不能添加用户！");
+        	return ;
+        }
+	function editFn(rowModel, rowEl){
+		sysDialog.editUser(rowModel, function(){
+			grid.refresh();
+		});
+	}
+	grid = createSysGrid(IX.inherit(GridCfgs.user, {
+		rowModel :  UserRowModel,
+		actions : ["delete", ["edit", "编辑", editFn],
+			["chgpriv", "修改权限", sysDialog.chgpriv],
+			["chgpwd", "修改密码", sysDialog.chgpwd]
+		],
+		listeners : {
+			createItem : sysDialog.createUser,
+			deleteItems : sysDialog.deleteUsers
+		}
+	}), false);
+	cbFn();
+}
+
+</script>
+<tpl id="config">
+<div class="nv-box sys-config">
+	<div class="nv-title">系统配置</div>
+	<div class="nv-body">
+		<div class="area">
+			<h3>数据配置同步设置</h3>
+			<div class="item"> 
+				<a data-href="$sys.syncData" class="btn-syncData"></a>
+			</div>
+			<div class="item"> 
+				<a data-href="$sys.check" data-key="Sync" class="nv-checkbox {syncClz}">
+					<span class="ixpic-"></span><span>{syncTxt}</span>
+				</a>
+			</div>
+		</div>
+		<div class="{cursor}">
+			<div class="area">
+				<h3>控制释放延时设置</h3>
+				<div class="item"> 
+					<span>控制释放延时：</span>
+					<span><input maxlength="6" id="control-time" value="{controlTime}" {controlTimeAttr}/></span>
+					<span>毫秒</span>
+				</div> 
+			</div>
+			<div class="area">
+				<h3>系统校时设置</h3>
+				<div class="item sum">
+					<h6>校时方式选择</h6>
+					<div>
+						<a data-href="$sys.checkRS422" class="nv-radio rs422 {rs422Clz}">
+							<span class="ixpic- {radioSite}"></span><span>启用RS－422方式</span>
+						</a>
+					</div>
+					<div>
+						<a data-href="$sys.checkNTP" class="nv-radio ntp {ntpClz}">
+							<span class="ixpic- {radioSite}"></span><span>启用NTP服务器</span>
+						</a>
+						<span><input id="ntp-ip" value="{ntpIP}" {hostAttr}/></span>
+						<span>端口</span>
+						<span><input id="ntp-port" value="{ntpPort}" {portAttr}/></span>
+					</div>
+				</div>
+				<div class="line"></div>
+				<div class="item {dispayView}"> 
+					<a data-href="$sys.syncTiming" class="btn-syncTiming"></a>
+					<span class="syncTiming-mask hide"></span>
+				</div>
+				<div class="item">
+					<a data-href="$sys.checkTiming" class="nv-checkbox {timingClz}">
+						<span class="checkTime ixpic- {checkSite}"></span><span>启用自动校时</span>
+					</a>
+					<span class="schedule-time"><b>每天</b>
+					<input id="schedule-time" value="{scheduleTime}" {scheduleAttr}/></span>
+					<span>时进行同步</span>
+				</div>
+			</div>
+			<div class="area">
+				<h3>服务器备份设置</h3>
+				<div class="item"> 
+					<a class="nv-checkbox {tvsClz}">
+						<span class="ixpic- {dispayInView}"></span><span>启用视频服务器异地备份功能</span>
+					</a>
+					<a data-href="$sys.check" data-key="ServerBackupSetting.backupTVS" class="button {dispayView} {tvsClz}"></a>
+				</div>
+				<div class="item">
+					<a class="nv-checkbox {ssClz}">
+						<span class="ixpic- {dispayInView}"></span><span>启用存储服务器异地备份功能</span>
+					</a>
+					<a data-href="$sys.check" data-key="ServerBackupSetting.backupSS" class="button {dispayView} {ssClz}"></a>
+				</div>
+			</div>
+			<div class="area">
+				<h3>存储备份设置</h3>
+				<div class="item"> 
+					<a class="nv-checkbox {storageClz}">
+						<span class="ixpic- {dispayInView}"></span><span>启用存储异地备份功能</span>
+					</a>
+					<a data-href="$sys.check" data-key="StorageBackupSetting" class="button storage {dispayView} {storageClz}"></a>
+				</div>	
+			</div>
+		</div>	
+	</div>
+</div>		
+</tpl>
+<script>
+var sysConfigData = {};
+
+function uploadConfigData(){
+	sysCaller("setConfig", sysConfigData, function(){
+		ixwInfo("配置修改已生效！");
+	});
+}
+function uploadTimingSettingData(){
+	sysCaller("timingSetting", sysConfigData, function(){
+		ixwInfo("配置修改已生效！");
+	});
+}
+var SyncDataText = {
+	1 : "修改控制中心配置数据时，立即向控制中心TVS和下属各车站／车辆段发送配置数据",
+	2 : "修改本车辆段配置数据时，立即向控制中心和本车辆段TVS发送配置数据",
+	3 : "修改本车站配置数据时，立即向控制中心和本车站TVS发送配置数据"
+};
+function getCheckedClz(name,part){
+	//return $XP(sysConfigData, name, false)? "selected" : "";
+	var aaa=JSON.parse($XP(sysConfigData, name));
+	return $XP(aaa, part, false)? "selected" : "";
+}
+function getState(name){
+	var flag=$XP(sysConfigData, name);
+	if (flag === "true" || flag === true)
+		return "selected";
+	return "";
+}
+function getCheckedCl(name){
+	return ("false"!=$XP(sysConfigData, name))?"selected" : "";
+}
+function getTpldata4Config(){
+	siteType = TCM.Env.getSession().getCurrentSiteType();
+	isOCC = (siteType == 1 || siteType == 4) ? true : false;
+	var enableTiming = getCheckedClz("TimingSetting","autoTiming");
+	var enableNTP = getCheckedClz("TimingSetting","useNTP");
+	return {
+		syncClz : getCheckedCl("Sync"),
+		syncTxt : SyncDataText[session.getCurrentSiteType()],
+		controlTime : $XP(sysConfigData, "ControlReleaseTime", 3000),
+		timingClz : enableTiming,
+		scheduleAttr : enableTiming? "": "disabled",
+		scheduleTime : JSON.parse($XP(sysConfigData,"TimingSetting")).schedule||"01:00:00",
+		rs422Clz : getCheckedClz("TimingSetting","useRS422"),
+		ntpClz : getCheckedClz("TimingSetting","useNTP"),
+		ntpIP :  JSON.parse($XP(sysConfigData, "TimingSetting")).ntpIP,
+		hostAttr : enableNTP? "": "disabled",
+		ntpPort :  JSON.parse($XP(sysConfigData,"TimingSetting")).ntpPort,
+		portAttr : enableNTP? "": "disabled",
+		tvsClz : getCheckedClz("ServerBackupSetting","backupTVS"),
+		ssClz : getCheckedClz("ServerBackupSetting","backupSS"),
+		storageClz : getCheckedCl("StorageBackupSetting"),
+		dispayInView : isOCC ? "displayNone" : "displayBlock",
+		dispayView : isOCC ? "" : "displayNone",
+		radioSite : isOCC ? "" : "radioSite",
+		controlTimeAttr : isOCC ? "" : "disabled",
+		cursor : isOCC ? "" : "cursor",
+		checkSite : isOCC ? "" : "checkSite"
+	};
+}
+
+globalActionConfig([["sys.check", function(params, el){
+	if(!isOCC && params.key != "Sync") return;
+	var ifSelected = !$XH.hasClass(el, "selected");
+	function _okFn(){
+		if(params.key=="ServerBackupSetting.backupSS"||params.key=="ServerBackupSetting.backupTVS"){
+			var bbb=JSON.parse($XP(sysConfigData, "ServerBackupSetting"));
+			if(params.key=="ServerBackupSetting.backupSS")
+				bbb.backupSS=ifSelected;
+			if(params.key=="ServerBackupSetting.backupTVS")
+				bbb.backupTVS=ifSelected;
+			sysConfigData.ServerBackupSetting=JSON.stringify(bbb);
+
+		}else{
+			IX.setProperty(sysConfigData, params.key, ifSelected);
+		}
+		$XH[ifSelected ? "addClass": "removeClass"](el, "selected");
+		uploadConfigData();
+		NV.Dialog.hide();
+	}
+	if(!ifSelected && params.key != "Sync")
+		return NV.Dialog.confirm("备份设置", "停止异地备份功能可能导致紧急情况下备份数据丢失，请慎重！", _okFn);
+	_okFn();
+}], ["sys.syncData", function(params, el){
+	sysCaller("syncData", {}, function(){
+		ixwInfo("服务器已向TVS以及其它服务器发送相关配置数据！");
+	});
+}], ["sys.syncTiming", function(params, el){
+	if(!isOCC) return;
+	sysCaller("syncTiming", {}, function(){
+		ixwInfo("服务器已向TVS发出立即同步时钟命令！");
+	});
+}], ["sys.checkTiming", function(params, el){
+	if(!isOCC) return;
+	var ifSelected = !$XH.hasClass(el, "selected");
+	var useRS422 = $XH.hasClass(jQuery(".rs422").get(0), "selected");
+	var useNTP = $XH.hasClass(jQuery(".ntp").get(0), "selected");
+	var schedule = jQuery("#schedule-time").attr("value");
+	var ntpIP = jQuery("#ntp-ip").attr("value");
+	var ntpPort = jQuery("#ntp-port").attr("value");
+	$XH[ifSelected ? "addClass": "removeClass"](el, "selected");
+	sysConfigData.TimingSetting =JSON.stringify({
+		"schedule" : "01:00:00",
+		"useRS422" : useRS422,
+		"useNTP" : useNTP,
+		"ntpIP" : ntpIP,
+		"ntpPort" : ntpPort,
+		"autoTiming" : ifSelected ? true : false
+	});
+	if (ifSelected)
+		jQuery("#schedule-time").attr("disabled",false);
+	else
+		jQuery("#schedule-time").attr("disabled",true);
+	uploadTimingSettingData();
+}], ["sys.checkRS422", function(params, el){
+	var ccc=JSON.parse($XP(sysConfigData, "TimingSetting"));
+	if(!isOCC) return;
+	var areaEl = $XH.ancestor(el, "area");
+	if ($XH.hasClass(el, "selected"))
+		return;
+	jQuery(areaEl).find(".rs422").addClass("selected");
+	jQuery(areaEl).find(".ntp").removeClass("selected");
+	jQuery(".sum").find("input").attr("disabled", true);
+	ccc.useRS422 = true;
+	ccc.useNTP = false;
+	sysConfigData.TimingSetting=JSON.stringify(ccc);
+	uploadTimingSettingData();
+}], ["sys.checkNTP", function(params, el){
+	var ddd=JSON.parse($XP(sysConfigData, "TimingSetting"));
+	if(!isOCC) return;
+	var areaEl = $XH.ancestor(el, "area");
+	if ($XH.hasClass(el, "selected"))
+		return;
+	jQuery(areaEl).find(".rs422").removeClass("selected");
+	jQuery(areaEl).find(".ntp").addClass("selected");
+	jQuery(".sum").find("input").removeAttr("disabled");
+	ddd.useRS422 = false;
+	ddd.useNTP = true;
+	sysConfigData.TimingSetting=JSON.stringify(ddd);
+	uploadTimingSettingData();
+}]]);
+
+function checkIfRange(s, min, max, ifFormat){
+	if (isNaN(s)) return false;
+	var k = s - 0;
+	if (k<min || k>max) return false;
+	if (ifFormat) {
+		k = "0" + k;
+		return (k.length-2>0) ? k.substring(k.length-2,k.length):k;
+	}
+	return true;
+}
+function checkIfTime(s){
+	var arr = s.split(":");
+	if (IX.isEmpty(arr[0]) || isNaN(arr[0]))
+		return false;
+	arr[0] = checkIfRange(arr[0],0, 23, true);
+	if (!arr[0]) return false;
+	if (arr.length==1 || IX.isEmpty(arr[1]))
+		arr[1] = "00";
+	else {
+		arr[1] = checkIfRange(arr[1],0, 59, true);
+		if (!arr[1]) return false;
+	}
+	if (arr.length==2 || IX.isEmpty(arr[2]))
+		arr[2] = "00";
+	else {
+		arr[2] = checkIfRange(arr[2],0, 59, true);
+		if (!arr[2]) return false;
+	}
+	return arr.join(":");
+}
+function checkIfIP(s){
+	var arr = s.split(".");
+	if (arr.length != 4)
+		return false;
+	for (var i = 0; i < 4; i++){
+		if (!checkIfRange(arr[i], 0, 255))
+			return false;
+		arr[i] = arr[i]-0;
+	}
+	return arr.join(".");
+}
+function checkIfPort(s){
+	if (!checkIfRange(s, 0, 65535, false)) return false;
+	return s;
+}
+function checkIfNum(s){
+	if (!checkIfRange(s, 0, 999999, false)) return false;
+	return s;
+}
+var BlurFns = {
+	"control-time" : function(inputEl){
+		var val = inputEl.value;
+		if (val == sysConfigData.ControlReleaseTime)
+			return;
+		var _value = checkIfNum(val);
+		if (!_value)
+			return nvAlert("请输入有效的控制释放延时时间！");
+		sysConfigData.ControlReleaseTime = val-0;
+		inputEl.value = _value;
+		uploadConfigData();
+	},
+	"schedule-time" : function(inputEl){
+		var val = inputEl.value;
+		var eee=JSON.parse($XP(sysConfigData, "TimingSetting"));
+		if (val == eee.schedule)
+			return;
+		var _value = checkIfTime(val);
+		if (!_value)
+			return nvAlert("请输入正确的时间格式，例如：01:00:00");
+		eee.schedule = _value;
+		sysConfigData.TimingSetting=JSON.stringify(eee);
+		inputEl.value = _value;
+		uploadTimingSettingData();
+	},
+	"ntp-ip": function(inputEl){
+		var val = inputEl.value;
+		var fff=JSON.parse($XP(sysConfigData, "TimingSetting"));
+		if (val == fff.ntpIP)
+			return;
+		var _value = checkIfIP(val);
+		if (!_value)
+			return nvAlert("请输入正确的NTP地址，例如：192.168.0.1");
+		fff.ntpIP = _value;
+		sysConfigData.TimingSetting=JSON.stringify(fff);
+		inputEl.value = _value;
+		if (!fff.ntpPort)
+			jQuery('#ntp-port').focus();
+		else
+			uploadTimingSettingData();
+	},
+	"ntp-port" : function(inputEl){
+		var val = inputEl.value;
+		var ggg=JSON.parse($XP(sysConfigData, "TimingSetting"));
+		if (val == ggg.ntpPort)
+			return;
+		var _value = checkIfPort(val);
+		if (!_value)
+			return nvAlert("请输入正确的NTP端口，端口号范围：0~65535");
+		ggg.ntpPort = _value;
+		sysConfigData.TimingSetting=JSON.stringify(ggg);
+		inputEl.value = _value;
+		if (!ggg.ntpIP)
+			jQuery('#ntp-ip').focus();
+		else
+			uploadTimingSettingData();
+	}
+};
+
+function listenOnInput(){
+	IX.iterate(["control-time","schedule-time","ntp-ip","ntp-port"], function(id){
+		var inputEl = $X(id);
+		IX.bind(inputEl, {
+			keydown : function(e){
+				if (e.which != 13) return;
+				e.preventDefault();
+				inputEl.blur();
+			},
+			blur :function(){
+				BlurFns[id](inputEl);
+			}
+		});
+	});
+}
+function sysConfig(cbFn){
+	sysCaller("getConfig", {}, function(data){
+		sysConfigData = data;
+		$X('body').innerHTML = t_config.renderData("", getTpldata4Config());
+		listenOnInput();
+		jQuery(".cursor").find("input").attr("disabled",true);
+		// jQuery('#body input').bind({
+		// 	onkeydown : function(e){
+		// 		if (e.which != 13) return;
+		// 		e.preventDefault();
+		// 		inputEl.blur();
+		// 	},
+		// 	onblur : function(e){inputValueChanged(this);}
+		// });
+		cbFn();
+	});
+}
+
+IX.ns("TCM.Sys");
+TCM.Sys.init = function(pageCfg, pageParams, cbFn){
+	session = TCM.Env.getSession();
+	switch(pageCfg.name){
+	case "sys-line":
+		showSysLine(cbFn);
+		break;
+	case "sys-role":
+		showSysRole(cbFn);
+		break;		
+	case "sys-level":
+		showSysLevel(cbFn);
+		break;
+	case "sys-user":
+		showUsers(cbFn);
+		break;
+	case "sys-config":
+		sysConfig(cbFn);
+		break;	
+	}
+};
+</script>

@@ -1,0 +1,434 @@
+<script>
+var sysCaller = TCM.Global.sysCaller;
+var globalActionConfig = IXW.Actions.configActions;
+var SiteTypes = TCM.Const.SiteTypes;
+
+var showDialog = NV.Dialog.show;
+var hideDialog = NV.Dialog.hide;
+
+var getCheckboxHTML = NV.Lib.getCheckboxHTML;
+
+</script>
+<tpl id="leafItem">
+<div class="leaf {clz}">
+	<a class="nv-checkbox {chkClz}" data-href="$cameraTree.check" data-key="{key}">
+		<span class="ixpic-"></span><span class="text">{name}</span></a>
+</div>
+</tpl>	
+<tpl id="nodeItem">
+<div class="leaf {clz}">
+	<a class="nv-checkbox {chkClz}" data-href="$cameraTree.check" data-key="{key}">
+		<span class="ixpic-"></span><span class="text">{name}</span></a>
+	<a class="nv-collapse {expClz}" data-href="$cameraTree.expand">
+		<span class="pic-"></span></a>
+</div>
+</tpl>
+<tpl id="cameraTree">
+<div class="node line-cameras {expClz}">
+	<use id=".nodeItem" data='{clz: "line", key:"", name: "全线路"}'>
+	<tpl id="sites"><div class="node site-cameras {expClz}">
+		<use id=".nodeItem" data='{clz: "site", key:"{id}"}'>
+		<tpl id="zones"><div class="node zone-cameras {expClz}">
+			<use id=".nodeItem" data='{clz: "zone", key:""}'>
+			<tpl id="types"><div class="node type-cameras">
+				<use id=".leafItem" data='{clz: "type", key:"type"}'>
+				<tpl id="items">
+					<use id=".leafItem" data='{clz: "item", key:"{id}"}'>
+				</tpl>
+			</div></tpl>
+		</div></tpl>
+	</div></tpl>
+</div>
+</tpl>
+<script>
+globalActionConfig([["cameraTree.check",function(params,el){
+	var ifChecked = !$XH.hasClass(el, "selected");
+	var nodeEl = jQuery(el.parentNode.parentNode);
+	if(params.key===""){
+		if(jQuery(el.parentNode).next().length===0){
+			NV.Dialog.alert("该分区下没有摄像机，授权失败！");
+			return ;
+		}
+	}
+	if ($XH.hasClass(el.parentNode, "item")) {
+		$XH.toggleClass(el, "selected");
+		jQuery(el)[ifChecked?"addClass":"removeClass"]("part");
+		var acc=nodeEl.find("div.item a");
+		var n=0;
+		var length=acc.length;
+		for(var i=0;i<length;i++){
+			if($XH.hasClass(acc[i], "selected"))
+				n=n+1;
+		}
+		if(n==length){
+			nodeEl.find(".type .nv-checkbox").addClass("selected");
+			nodeEl.find(".type .nv-checkbox").addClass("part");
+		}
+		if(n>0&&n!=length){
+			nodeEl.find(".type .nv-checkbox").removeClass("selected");
+			nodeEl.find(".type .nv-checkbox").addClass("part");
+		}
+		if(n===0){
+			nodeEl.find(".type .nv-checkbox").removeClass("selected");
+			nodeEl.find(".type .nv-checkbox").removeClass("part");
+		}
+	} else{
+		nodeEl.find(".nv-checkbox")[ifChecked?"addClass":"removeClass"]("selected");
+		nodeEl.find(".nv-checkbox")[ifChecked?"addClass":"removeClass"]("part");
+	}
+	setCheck(nodeEl);
+	// nodeEl.parents(".node").children(".leaf").children(".nv-checkbox").removeClass("selected");
+}],["cameraTree.expand",function(params,el){
+	if($XH.hasClass(el.parentNode, "site")){
+		if(!el.parentNode.nextSibling){
+			NV.Dialog.alert("该站点下没有摄像机！");
+			return ;
+		}
+	}
+	$XH.toggleClass(el, "expanded");
+	$XH.toggleClass(el.parentNode, "expanded");
+}]]);
+function setCheck(nodeEl){
+	var acc=nodeEl.parent().find(".node .nv-checkbox");
+	var n=0;
+		var length=acc.length;
+		for(var i=0;i<length;i++){
+			if($XH.hasClass(acc[i], "selected"))
+				n=n+1;
+		}
+		if(n==length){
+			nodeEl.parent().children(".leaf").find(".nv-checkbox").addClass("selected");
+			nodeEl.parent().children(".leaf").find(".nv-checkbox").addClass("part");
+		}
+		if(n>0&&n!=length){
+			nodeEl.parent().children(".leaf").find(".nv-checkbox").removeClass("selected");
+			nodeEl.parent().children(".leaf").find(".nv-checkbox").addClass("part");
+		}
+		if(n===0){
+			nodeEl.parent().children(".leaf").find(".nv-checkbox").removeClass("selected");
+			nodeEl.parent().children(".leaf").find(".nv-checkbox").removeClass("part");
+		}
+		if(nodeEl.parent().hasClass("node"))
+		setCheck(nodeEl.parent());
+}
+
+function getCameraAccess(treeEl){
+	var el = jQuery(treeEl);
+	var lineCheckboxEl = el.find(".line>.nv-checkbox")[0];
+	if ($XH.hasClass(lineCheckboxEl, "selected"))
+		return "all";
+	var siteEls = el.find(".site");
+	return IX.loop(siteEls, [], function(acc, siteEl){
+		var checkboxEl = $XH.first(siteEl, "nv-checkbox");
+		var siteId = $XD.dataAttr(checkboxEl, "key")-0;
+		if ($XH.hasClass(checkboxEl, "selected")){
+			acc.push([siteId, "all"]);
+			return acc;
+		}
+		var selectedCameraEls = jQuery(siteEl.parentNode).find(".item>.selected");
+		if (selectedCameraEls.length===0)
+			return acc;
+		var ids = IX.map(selectedCameraEls, function(_el){
+			return $XD.dataAttr(_el, "key") - 0;
+		});
+		acc.push([siteId, ids]);
+		return acc;
+	});
+}
+
+var DevTypes = TCM.Const.DeviceTypes;
+var DevNames = ["枪机", "球机", "半球机"];
+function getTypeIdx(cameraType){
+	switch(cameraType){
+	case DevTypes.IPCFixed:
+	case DevTypes.CameraFixed: return 0;
+	case DevTypes.IPCSphere:
+	case DevTypes.CameraSphere: return 1;
+	case DevTypes.IPCSemiSphere:
+	case DevTypes.CameraSemiSphere: return 2;
+	}
+	return 0;
+}
+function getChkSelected(acc, newValue){
+	if (acc === null)
+		return newValue;
+	if (acc != newValue || acc === "part" || newValue == "part")
+		return "part";
+	return acc;
+}
+/**  (cameras: [{id, type, name}], accessHT : {id:true} or "all")
+
+	return {
+		selected : "", // "selected", "part"
+		data : [{}]
+	}
+ */
+function getCameraTreeTpldatData4Cameras(cameras, accessHT, bool){
+	var types = [[],[],[]]; // 0 :枪机， 1:球机， 2:半球机
+	var isAll = accessHT == "all";
+	var selected = [null, null, null];
+	var typesSelected = null;
+	if(cameras.length===0){
+		typesSelected=accessHT == "all"?"selected":"";
+	}
+
+	IX.iterate(cameras, function(c){
+		var typeIdx = getTypeIdx(c.type);
+		var cid = c.id;
+		var chkClz = isAll || (cid in accessHT) ? "selected":"";
+		selected[typeIdx] = getChkSelected(selected[typeIdx], chkClz);
+		types[typeIdx].push({
+			chkClz: chkClz,
+			id : c.id,
+			name: c.name
+		});
+	});
+	if(bool){
+		types[0] = [];
+		types[2] = [];
+	}
+	var arr = IX.loop(types, [], function(acc, typeData, idx){
+		if (typeData.length===0) return acc;
+		var chkClz = isAll?"selected" : selected[idx];
+		typesSelected = getChkSelected(typesSelected, chkClz);
+		acc.push({
+			chkClz: chkClz,
+			name : DevNames[idx],
+			items : typeData
+		});
+		return acc;
+	});
+	return {
+		selected : typesSelected,
+		data : arr
+	};
+}
+/**  (siteId, zones: [{
+		name:zoneName, cameras: [{id, type, name}]
+	]}], accessHT :{id:true} or "all")
+
+	return {
+		selected : "", // "selected", "part"
+		data : {}
+	}
+ */
+function getCameraTreeTpldatData4Zone(zoneName, cameras, accessHT, bool){
+	var typesDatas = getCameraTreeTpldatData4Cameras(cameras, accessHT, bool);
+	var flag=accessHT=="all";
+	return {
+		selected : flag ? "selected" : typesDatas.selected,
+		data : {
+			name : zoneName,
+			chkClz : flag ? "selected" : typesDatas.selected,
+			expClz : "expanded",
+			types : typesDatas.data
+		}
+	};
+}
+/**  (siteId, zones: [{
+		name:zoneName, cameras: [{id, type, name}]
+	]}], accessValue : [cameraId] or "all")
+	return {
+		selected : "", // "selected", "part"
+		data : {}
+	}
+ */
+function getCameraTreeTpldatData4Site(siteId, zones, accessValue, siteHT, bool){
+	var accessHT = accessValue=="all" ? "all" : IX.loop(accessValue, {}, function(acc, item){
+		acc[item] = true;
+		return acc;
+	});
+	var zonesInfo=zones;
+	var siteSelected = null;
+	if(bool&&zones.length>0){
+			zonesInfo=IX.loop(zonesInfo, [], function(aww, zone){
+			var axx=zone.cameras;
+			var azz=[];
+			for(var i=0;i<axx.length;i++){
+				var ayy=zone.cameras[i];
+				if (ayy.type==22||ayy.type==33){
+					azz.push(ayy);
+				}
+			}
+			if(azz.length>0)
+			aww.push({name:zone.name,cameras:azz});
+			return aww;
+		});
+	}
+	var zoneData =IX.map(zonesInfo, function(zone){
+		var data = getCameraTreeTpldatData4Zone(zone.name, zone.cameras, accessHT, bool);
+		siteSelected = getChkSelected(siteSelected, data.selected);
+		return data.data;
+	});
+	var site = siteHT && siteHT.get(siteId);
+	if (zoneData.length===0) {
+		siteSelected =  accessValue=="all" ?"selected" : "";
+	}
+	return {
+		selected : siteSelected, 
+		data : {
+			id : siteId,
+			name : site ? site.name : "",
+			chkClz : siteSelected,
+			expClz : "expanded",
+			zones : zoneData
+		}
+	};
+}
+/**	 (cameras : [siteId, [{
+		name:zoneName, cameras: [{id, type, name}]
+	}]]
+
+	accessValue : "all" or [] or [siteId, [cameraId]] or [siteId, "all"]
+	)
+ */
+
+function getCameraTreeHTML(cameras, accessValue, siteHT, bool){
+	var isOCC = TCM.Env.getSession().getCurrentSiteType() == SiteTypes.OCC;
+	var tplname = isOCC ? "" : "sites";
+	var isAll = accessValue=="all";
+	var accessHT = isAll?{} : IX.loop(accessValue, {}, function(acc, item){
+		acc[item[0]] = isAll? "all": item[1];
+		return acc;
+	});
+
+	var sitesSelected = null;
+	var siteDatas = IX.map(cameras, function(siteData){
+		var siteId = siteData[0], zones = siteData[1];
+		var data = getCameraTreeTpldatData4Site(siteId, zones, accessHT[siteId] || [], siteHT, bool);
+		sitesSelected = getChkSelected(sitesSelected, data.selected);
+		return data.data;
+	});
+
+	if(cameras.length===0){
+		var siteName=TCM.Env.getSession().getCurrentSite().name;
+		var siteId = TCM.Env.getSession().getCurrentSite().id;
+		var siteData={chkClz:"part",expClz:"",id:siteId,name:siteName};
+		return t_cameraTree.renderData("sites",siteData);
+	}
+
+	return t_cameraTree.renderData(isOCC ? "" : "sites", isOCC?{
+		chkClz : sitesSelected,
+		expClz : "expanded",
+		sites : siteDatas
+	} : siteDatas[0]);
+}
+</script>
+<tpl id="leafItem1">
+<div class="leaf {clz}">
+	<a class="nv-checkbox {chkClz}" data-type="{type}" data-href="${action}" data-key="{key}">
+		<span class="ixpic-"></span><span class="text">{name}</span></a>
+</div>
+</tpl>	
+<tpl id="nodeItem1">
+<div class="leaf {clz}">
+	<a class="nv-checkbox {chkClz}" data-href="${action}" data-type="{type}">
+		<span class="ixpic-"></span><span class="text">{name}</span></a>
+	<a class="nv-collapse {expClz}" data-href="$camera.expand">
+		<span class="pic-"></span></a>
+</div>
+</tpl>
+<tpl id="addCamera">
+	<tpl id="types">
+		<use id=".nodeItem1" data='{clz: "type", type:"{type}"}'>
+		<div class="node type-cameras {clz}"><tpl id="items">
+			<use id=".leafItem1" data='{clz: "item", key:"{id}"}'>
+		</tpl></div>
+	</tpl>
+</tpl>
+<script>
+globalActionConfig([["camera.check",function(params,el){
+	var ifChecked = !$XH.hasClass(el, "selected");
+	var nodeEl = jQuery(el.parentNode);
+	if ($XH.hasClass(el.parentNode, "item")) {
+		$XH.toggleClass(el, "selected");
+		var acc=nodeEl.parent().find(".nv-checkbox");
+		var n=0;
+		var length=acc.length;
+		for(var i=0;i<length;i++){
+			if($XH.hasClass(acc[i], "selected"))
+				n=n+1;
+		}
+		if(n==length){
+			nodeEl.parent().prev().find(".nv-checkbox").removeClass("part");
+			nodeEl.parent().prev().find(".nv-checkbox").addClass("selected");
+		}
+		if(n>0&&n!=length){
+			nodeEl.parent().prev().find(".nv-checkbox").removeClass("selected");
+			nodeEl.parent().prev().find(".nv-checkbox").addClass("part");
+		}
+		if(n===0){
+			nodeEl.parent().prev().find(".nv-checkbox").removeClass("selected");
+			nodeEl.parent().prev().find(".nv-checkbox").removeClass("part");
+		}
+	} else{
+		$XH.toggleClass(el, "selected");
+		jQuery(el)[ifChecked?"addClass":"removeClass"]("part");
+		nodeEl.next().find(".nv-checkbox")[ifChecked?"addClass":"removeClass"]("selected");
+	}
+}],["camera.expand",function(params,el){
+	$XH.toggleClass(el, "expanded");
+	$XH.toggleClass(el.parentNode, "expanded");
+	var ee=$XH.ancestor(jQuery(el.parentNode).siblings(".type").get(0),"expanded");
+	if(ee){
+		$XH.toggleClass(ee, "expanded");
+		$XH.toggleClass($XH.first(ee, "nv-collapse"), "expanded");
+	}
+	var ex=$XH.ancestor(jQuery(el.parentNode).siblings(".type").get(1),"expanded");
+	if(ex){
+		$XH.toggleClass(ex, "expanded");
+		$XH.toggleClass($XH.first(ex, "nv-collapse"), "expanded");
+	}
+}]]);
+function getCamera4TypeAccess(treeEl){
+	var selectedCameraEls = jQuery(treeEl).find(".item>.selected");
+	if (selectedCameraEls.length===0)
+		return [];
+	var ids = IX.map(selectedCameraEls, function(_el){
+		return $XD.dataAttr(_el, "key");
+	});
+	return {ids: ids};
+}
+
+function getCameraTpldatData4Cameras(cameras, type, action){
+	var types = [[],[],[]]; // 0 :枪机， 1:球机， 2:半球机
+	IX.iterate(cameras, function(c){
+		var typeIdx = getTypeIdx(c.type);
+		types[typeIdx].push({
+			action : action ? action : "camera.check",
+			chkClz: "",
+			id : c.id,
+			name : c.name,
+			type : c.type
+		});
+	});
+	return IX.loop(types, [], function(acc, typeData, idx){
+		if (typeData.length===0) return acc;
+		acc.push({
+			clz : "cameras"+idx,
+			action : action ? action : "camera.check",
+			chkClz : "",
+			expClz : "expanded",
+			name : DevNames[idx],
+			type : idx === 0? 20: (idx === 1? 22: 21),
+			items : typeData
+		});
+		return acc;
+	});
+}
+
+function getCamera4TypesHTML(cameras, types, action){
+	var typeData = getCameraTpldatData4Cameras(cameras, types, action);
+	return t_addCamera.renderData("", {
+		types: typeData
+	});
+}
+
+IX.ns("TCM.Lib");
+TCM.Lib.CameraTree = {
+	getCameraTreeHTML : function(cameras, accessValue, siteHT, bool){return getCameraTreeHTML(cameras, accessValue, siteHT, bool);},
+	getCameraAccess : function(treeEl){return getCameraAccess(treeEl);},
+	getCamera4TypesHTML : function(cameras, types, action){return getCamera4TypesHTML(cameras, types, action);},
+	getCamera4TypeAccess : function(treeEl){return getCamera4TypeAccess(treeEl);}
+};
+</script>

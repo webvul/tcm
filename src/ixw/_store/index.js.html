@@ -1,0 +1,791 @@
+<script>
+var storeCaller = TCM.Global.storeCaller;
+var globalActionConfig = IXW.Actions.configActions;
+
+var showDialog = NV.Dialog.show;
+var hideDialog = NV.Dialog.hide;
+var confirmDialog = NV.Dialog.confirm;
+var nvAlert = NV.Dialog.alert;
+
+var getComboHTML = NV.Lib.getComboHTML;
+/*
+	定义常量，开始时间段，结束时间段，天数，周期。
+ */
+var ComboTime = (function(){
+	var count = 0;
+	var arr = [];
+	for (var i = 0; i < 9; i++) {
+		var value = count < 10 ? "0"+count+":00" : count+":00";
+		arr.push({
+			id: value,
+			name: value
+		});
+		count += 3;
+	}
+	return arr;
+})();
+function getConstant4Array(arr){
+	return IX.map(arr, function(c){
+		return IX.inherit(c, {action: "store.pick"});
+	});
+}
+var FromComboItem = getConstant4Array(ComboTime.slice(0, ComboTime.length-1));
+var ToComboItem = getConstant4Array(ComboTime.slice(1, ComboTime.length));
+var DaysComboItem = [{id : "all", name : "全周"}].concat(IX.map(TCM.Const.Days, function(day, idx){
+	return {id: idx, name: day};
+}));
+var CircleComboItem = getConstant4Array(IX.map([7, 15, 30], function(c){
+	return {id: c, name: c+"天"};
+}));
+</script>
+
+<tpl id="leafItem">
+<div class="leaf item">
+	<a class="nv-checkbox {chkClz}" data-type="{type}" data-href="${action}" data-key="{id}">
+		<span class="ixpic-"></span><span class="text">{name}</span></a>
+</div>
+</tpl>	
+<tpl id="showCamera">
+	<tpl id="types">
+		<div class="node {clz}"><tpl id="items">
+			<use id=".leafItem">
+		</tpl></div>
+	</tpl>
+</tpl>
+
+<tpl id="addCamera">
+	<tpl id="types">
+		<div class="leaf type">
+			<a class="nv-checkbox {chkClz}" data-href="${action}" data-type="{type}">
+				<span class="ixpic-"></span><span class="text">{name}</span></a>
+			<a class="nv-collapse {expClz}" data-href="$camera.expand">
+				<span class="pic-"></span></a>
+		</div>
+		<div class="node type-cameras {clz}"><tpl id="items">
+			<use id=".leafItem">
+		</tpl></div>
+	</tpl>
+</tpl>
+<script>
+var DevTypes = TCM.Const.DeviceTypes;
+var DevNames = ["枪机", "球机", "半球机"];
+//判断摄像机类型
+function getTypeIdx(cameraType){
+	switch(cameraType){
+	case DevTypes.IPCFixed:
+	case DevTypes.CameraFixed: return 0;
+	case DevTypes.IPCSphere:
+	case DevTypes.CameraSphere: return 1;
+	case DevTypes.IPCSemiSphere:
+	case DevTypes.CameraSemiSphere: return 2;
+	}
+	return 0;
+}
+//根据摄像机类型进行分类
+function getTypes(cameras){
+	var types = [[],[],[]]; // 0 :枪机， 1:球机， 2:半球机
+	IX.iterate(cameras, function(c){
+		var typeIdx = getTypeIdx(c.type);
+		types[typeIdx].push({
+			action : "cameras.move",
+			chkClz : c.selected? "selected": "",
+			id : c.id,
+			name : c.name,
+			type : c.type
+		});
+	});
+	return types;
+}
+//获取tree中type的显示数据
+function getTypeData(types){
+	return IX.loop(types, [], function(acc, typeData, idx){
+		if (typeData.length===0) return acc;
+		acc.push({
+			clz : "show-cameras"+idx,
+			items : typeData
+		});
+		return acc;
+	});
+}
+function getCamera4HTML(cameras){
+	var types = getTypes(cameras);
+	var typeData = getTypeData(types);
+	return t_showCamera.renderData("", {
+		types: typeData
+	});
+}
+function getMonitor4HTML(monitors, allMonitors){
+	var types = [[]]; 
+	IX.iterate(allMonitors, function(c){
+		types[0].push({
+			chkClz: IX.loop(monitors, [], function(acc, item){
+				if (item.id == c.id)
+					acc.push("selected");
+				return acc;
+			}).pop(),
+			action : "cameras.move",
+			id : c.id,
+			name: c.name
+		});
+	});
+	var typeData = getTypeData(types);
+	return t_showCamera.renderData("", {
+		types: typeData
+	});
+}
+//判定trigger中的摄像机总类上的选中状态
+function getStatus(arr){
+	var count = 0;
+	IX.iterate(arr, function(c, idx){
+		if (c.chkClz)
+			count++;
+	});
+	if (arr.length === count)
+		return "selected";
+	else if (count === 0)
+		return "";
+	else
+		return "part";
+}
+function getCameraTpldatData4Cameras(cameras){
+	var types = getTypes(cameras);
+	return IX.loop(types, [], function(acc, typeData, idx){
+		if (typeData.length===0) return acc;
+		acc.push({
+			clz : "cameras"+idx,
+			action : "cameras.move",
+			chkClz : getStatus(typeData),
+			expClz : "expanded",
+			type: idx,
+			name : DevNames[idx],
+			items : typeData
+		});
+		return acc;
+	});
+}
+//trigger中的摄像机显示HTML
+function getCamera4TypesHTML(cameras){
+	var typeData = getCameraTpldatData4Cameras(cameras);
+	return t_addCamera.renderData("", {
+		types: typeData
+	});
+}
+</script>
+
+<tpl id="edit">
+<div class="dialogHead">
+	<span class="title_1"><span class="label">单位</span><input disabled value="{siteName}"></span>
+	<span class="title_1"><span class="label">名称</span><input id="plan_name" value="{plan_name}"></span>
+</div>
+<a class="camera-move" data-href="$cameraPanel.hide"></a>
+<div class="plan-content">
+	<div class="lt">
+		<h3><span class="label">录像时间计划表</span></h3>
+		<ul>
+			<li class="days-choose"><span class="label">日期计划</span>
+				<a id="daysName" class="daysCombo" data-href="$store.popDays">
+					<tpl id="dayitems"><div id="day{id}" class="day {clz}" data-key="{id}">
+						<span class="text">{name}</span><span class="delete-day"></span></div>
+					</tpl>
+					<span class="pic-"></span>
+				</a>
+			</li>
+			<li class="circle"><span class="label">保存周期</span>{circleCombo}</li>
+			<li>
+				<span class="label">录像时间</span>
+				<span class="time-rt">
+					<span class="time">{fromCombo}</span>
+					<span class="separator">--</span>
+					<span class="time">{toCombo}</span>
+				</span>
+			</li>
+		</ul>
+		<h3><span class="label">当前单位的存储服务器</span></h3>
+		<div id="storages"><tpl id="ss">
+			<a class="nv-checkbox {clz}" data-href="$store.checkToggle" data-key="{id}">
+				<span class="ixpic-"></span><span>{name}</span></a>
+		</tpl></div>
+	</div>{showDevices}
+	<div id="caseCameraPanel"><h3><span class="label">未分配录像的摄像机</span></h3></div>
+</div>
+</tpl>
+
+<tpl id="showCameras">
+<div class="useCamera">
+	<h3><span class="label">已在录像的摄像机</span></h3>
+	<div class="showCamera">{showCamera}</div>
+	<a class="more" data-href="$store.addCamera">
+		<span class="add-camera">新增需要录像的摄像机</span>
+		<span class="add"></span>
+	</a>
+</div>
+</tpl>
+
+<tpl id="showMonitors">
+	<h3><span class="label">已在录像的监视器</span></h3>
+	<div class="showMonitor">{showMonitor}</div>
+</tpl>
+
+<tpl id="dropdownMenu">
+	<div class="node">
+		<a class="nv-checkbox {clz}" data-href="$store.checkAll" data-key="all">
+			<span class="ixpic-"></span><span class="text">{name}</span></a>
+	</div><tpl id="items">
+		<div class="leaf ">
+			<a class="nv-checkbox {clz}" data-href="$store.checkOne" data-key="{id}">
+				<span class="ixpic-"></span><span class="text">{name}</span></a>
+		</div>
+	</tpl>
+</tpl>
+<script>
+var isOCC = null;
+var CurrentSite = null;
+var isHandle = null;
+
+var planData = null; //VM对象
+var caseDaysPanel = null;
+var caseCameraPanel = null;
+//day的trigger显示是否选中
+function getSelect(ids, arr){
+	return IX.map(arr, function(o){
+		return IX.inherit(o, {
+			clz : IX.Array.isFound(o.id, ids) ? "selected" : ""
+		});
+	});
+}
+function getIds4Array(key){
+	return IX.map(key, function(item){ return item.id;});
+}
+//获取未分配的这相机显示
+function CaseCameraPanel(planData){
+	var divEl = $X("caseCameraPanel");
+	if (!$XH.first(divEl, "type")) {
+		jQuery(divEl).append(jQuery('<div>'+planData.cameraRefreshHTML()+'</div>'));
+		IX.bind(divEl, {
+			click : function(e){
+				if ($XD.ancestor(e.target, "a")) return;
+				var el = $XH.ancestor(e.target, "type");
+				$XH.toggleClass(el, "expanded");
+				jQuery(el).find(".nv-collapse").toggleClass("expanded");
+			}
+		});
+	}
+	return {
+		show : function(){
+			divEl.style.display = "block";
+			jQuery(".camera-move").css("display", "block");
+			jQuery(".plan-content").css("left", "-330px");			
+		},
+		hide : function(){
+			divEl.style.display = "none";
+			jQuery(".camera-move").css("display", "none");
+			jQuery(".plan-content").css("left", "50px");
+		}
+	};
+}
+
+//构造Plan类，用于dialog显示的数据，以及操作对数据的改变和维护
+function PlanVM(data, result){
+	var BasePlan = {
+		days : "all",
+		circle : 30,
+		from : "00:00",
+		to : "24:00",
+		storages : []
+	};
+	var	plan = IX.inherit(BasePlan, {siteId: CurrentSite.id}, data,
+		data.storages ? {storages: getIds4Array(data.storages)} : [], 
+		isOCC? {monitors: data.monitors ? getIds4Array(data.monitors) : []} : {cameras: data.cameras ? getIds4Array(data.cameras) : []});
+	//星期下拉的trigger
+	caseDaysPanel = new IXW.Lib.PopTrigger({
+		id : "caseDaysPanel",
+		ifKeepPanel : function(target){
+			return !!$XH.ancestor(target, "days-choose");
+		},
+		bodyRefresh : function(bodyEl, triggerEl){
+			var _value = planData.getPlanDays();
+			var daysItems = DaysComboItem.slice(1, DaysComboItem.length);
+			bodyEl.innerHTML = t_dropdownMenu.renderData("",{
+				clz : _value == "all"? "selected": "",
+				name : "全周",
+				items : getSelect(_value == "all"? "0123456".split(""): _value, daysItems)
+			});
+		}
+	});
+	function refreshDay4One(value, ifChecked){
+		var $daysName = jQuery("#daysName");
+		var $caseDaysPanel = jQuery("#caseDaysPanel");
+		var $dayall = jQuery("#dayall");
+		if (ifChecked) {
+			if (plan.days.length !== 7) 
+				$daysName.find('[data-key="'+value+'"]').addClass("show-day");
+			else {
+				plan.days = "all";
+				$caseDaysPanel.find('[data-key="all"]').addClass("selected");
+				$daysName.find(".day").removeClass("show-day");
+				$dayall.addClass("show-day");
+			}
+		} else {
+			if (plan.days.length === 6) {
+				$caseDaysPanel.find('[data-key="all"]').removeClass("selected");
+				$daysName.find(".day").addClass("show-day");
+			}
+			$caseDaysPanel.find('[data-key="'+value+'"]').removeClass("selected");
+			$daysName.find('[data-key="'+value+'"]').removeClass("show-day");
+			$dayall.removeClass("show-day");
+		}
+		caseDaysPanel.setPos();
+	}
+	//操作星期时对于数据的操作和DOM的操作
+	function _setDays(value, isAdd){
+		if (value === "all") {
+			jQuery("#daysName .day").removeClass("show-day");
+			jQuery("#dayall")[isAdd? "addClass": "removeClass"]("show-day");
+			jQuery("#caseDaysPanel .nv-checkbox")[isAdd? "addClass": "removeClass"]("selected");
+			caseDaysPanel.setPos();
+			return plan.days = isAdd? "all": null;
+		}
+		if (isAdd) {
+			if (!plan.days)
+				plan.days = [value];
+			else
+				plan.days.push(value);
+			refreshDay4One(value, isAdd);
+		} else {
+			if (Array.isArray(plan.days))
+				plan.days = IX.Array.remove(plan.days, value);
+			else 
+				plan.days = IX.Array.remove([0,1,2,3,4,5,6], value);
+			refreshDay4One(value, isAdd);
+		}
+	}
+	//修改plan的一些值为数组的属性
+	function _setArr(key, value, isAdd){
+		if (isAdd)
+			plan[key].push(value);
+		else
+			plan[key] = IX.Array.remove(plan[key], value);
+		if (key == "cameras") {
+			IX.iterate(result.cameras, function(c, idx){
+				if (c.id == value)
+					c.selected = isAdd;
+			});
+		}
+	}
+	//获取提交给后台的数据，并验证是否符合提交格式
+	function _getData(){
+		if (!plan.days || plan.days.length === 0) {
+			nvAlert("日期计划不能为空！");
+			return false;
+		}
+		if (plan.to <= plan.from) {
+			nvAlert("录像开始时间必须小于结束时间！");
+			return false;
+		}
+		if (plan.storages.length === 0) {
+			nvAlert("存储服务器不能为空！");
+			return false;
+		}
+		if (isOCC && plan.monitors.length === 0) {
+			nvAlert("监视器不能为空！");
+			return false;
+		}
+		if (!isOCC && plan.cameras.length === 0) {
+			nvAlert("摄像机不能为空！");
+			return false;
+		}
+		return plan;
+	}
+	function getNameByIdInArray(arr, name){
+		for (var i = 0; i < arr.length; i++) {
+			if(arr[i].id == name)
+				return arr[i].name;
+		}
+		return "";
+	}
+	function getCombo(id, key, value, items){
+		return getComboHTML(id, {
+			value: key,
+			valueText: value,
+			items: items
+		});
+	}
+	function getSelectDay(ids, days){
+		return IX.loop(days, [], function(acc, day){
+			if (ids == "all" && ids == day.id)
+				day = IX.inherit(day, {clz: "show-day"});
+			else {
+				IX.iterate(ids, function(id){
+					if(id == day.id)
+						day = IX.inherit(day, {clz: "show-day"});
+				});
+			}
+			acc.push(day);
+			return acc;
+		});
+	}
+	//获取dialog的显示数据
+	function getTplData(){
+		var cricleValue = getNameByIdInArray(CircleComboItem, plan.circle) || "30";
+		var fromValue = getNameByIdInArray(FromComboItem, plan.from) || "00:00";
+		var toValue = getNameByIdInArray(ToComboItem, plan.to) || "24:00";
+		function getShowDevicesHTML(){
+			if (isOCC && isHandle) {
+				var monitors = data ? data.monitors: [];
+				return t_showMonitors.renderData("",{
+					showMonitor: getMonitor4HTML(monitors, monitors.concat(result.monitors))
+				});
+			} else {
+				return t_showCameras.renderData("",{
+					showCamera: getCamera4HTML(data ? IX.map(data.cameras, function(c){ 
+						return IX.inherit(c, {selected: true});
+					}) : [])
+				});
+			}
+		}
+		return {
+			siteName : CurrentSite.name,
+			plan_name : plan.name,
+			circleCombo : getCombo("plan_circle", plan.circle, cricleValue, CircleComboItem),
+			dayitems : getSelectDay(plan.days, DaysComboItem),
+			fromCombo : getCombo("plan_from", plan.from, fromValue, FromComboItem),
+			toCombo : getCombo("plan_to", plan.to, toValue, ToComboItem),
+			ss : getSelect(plan.storages, result.storages),
+			showDevices : getShowDevicesHTML()
+		};
+	}
+	return {
+		getTplData: getTplData,
+		setProperty : function(key, value){ plan[key] = value;},
+		setDays : _setDays,
+		setArr : _setArr,
+		getPlanDays : function(){ return plan.days;},
+		cameraRefreshHTML : function(){
+			var camerasHTML = getCamera4TypesHTML(result.cameras);
+			if(!camerasHTML)
+				return '<span class="hint">没有未分配的摄像机，请添加摄像机后再试！</span>';
+			else
+				return camerasHTML;
+		},
+		getData : _getData
+	};
+}
+//操作单个摄像机的勾选状态对数据和DOM的操作
+function checkOne(key, el, isAdd){
+	var type = Number($XD.dataAttr(el, "type"));
+	var $parent = jQuery(".cameras"+getTypeIdx(type));
+	jQuery('[data-key="'+key+'"]')[isAdd? "addClass": "removeClass"]("selected");
+	if (isAdd && jQuery('.showCamera [data-key="'+key+'"]').length === 0) {
+		var $accept = jQuery(".show-cameras"+getTypeIdx(type));
+		if ($accept.length === 0) {
+			$accept = jQuery('<div class="node ' +("show-cameras"+getTypeIdx(type))+ '"></div>');
+			jQuery(".showCamera").append($accept);
+		}
+		$accept.append(jQuery(el.parentNode).clone());
+	}
+	var max = $parent.find(".nv-checkbox").length;
+	if (max === 0) return;
+	var count = $parent.find(".selected").length;
+	var $a = $parent.prev().find(".nv-checkbox");
+	if (count === max)
+		$a.removeClass("part").addClass("selected");
+	else if (count === 0)
+		$a.removeClass("part").removeClass("selected");
+	else
+		$a.removeClass("selected").addClass("part");
+}
+//操作摄像机总类的勾选状态对数据和DOM的操作
+function checkAll(el, isAdd){
+	jQuery(el.parentNode).next().find(".nv-checkbox").each(function(){
+		var key = jQuery(this).attr("data-key");
+		if (isAdd) {
+			var parentClass = "show-cameras" + Number($XD.dataAttr(el, "type"));
+			var $parent = jQuery("."+parentClass);
+			if ($parent.length === 0) {
+				$parent = jQuery('<div class="node ' + parentClass + '"></div>');
+				jQuery(".showCamera").append($parent);
+			}
+			if (jQuery('.showCamera [data-key="'+key+'"]').length === 0)
+				$parent.append(jQuery(this.parentNode).clone());
+		}
+		jQuery('[data-key="'+key+'"]')[isAdd? "addClass": "removeClass"]("selected");
+		planData.setArr("cameras", key, isAdd);
+	});
+}
+globalActionConfig([["store.pick", function(params, el){
+	var id = params.key, name = el.innerHTML;
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	inputEl.value = id;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
+	var key = inputEl.id.split("_")[1];
+	planData.setProperty(key, id);
+}],["store.checkToggle", function(params, el){
+	if (!isHandle) return;
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH[ifChecked? "addClass": "removeClass"](el, "selected");
+	planData.setArr("storages", params.key, ifChecked);
+}],["store.popDays", function(params, el, evt){
+	if (!isHandle) return;
+	var elNode = evt.target;
+	if ($XH.ancestor(elNode, "day") && $XH.hasClass(elNode, "delete-day"))
+		return planData.setDays($XD.dataAttr(elNode.parentNode, "key"), false);
+	caseDaysPanel.trigger($X("daysName"));
+}],["store.checkAll", function(params, el){
+	if (!isHandle) return;
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH[ifChecked? "addClass": "removeClass"](el, "selected");
+	planData.setDays("all", ifChecked);
+}],["store.checkOne", function(params, el){
+	if (!isHandle) return;
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH[ifChecked? "addClass": "removeClass"](el, "selected");
+	planData.setDays(params.key, ifChecked);
+}],["store.addCamera", function(params, el){
+	if (!isHandle) return;
+	if (!caseCameraPanel)
+		caseCameraPanel = new CaseCameraPanel(planData);
+	caseCameraPanel.show();
+}],["cameraPanel.hide", function(params, el){
+	if (!isHandle) return;
+	caseCameraPanel.hide();
+}],["cameras.move", function(params, el){
+	if (!isHandle) return;
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH[ifChecked? "addClass": "removeClass"](el, "selected");
+	if (isOCC) 
+		return planData.setArr("monitors", params.key, ifChecked);
+	if ($XH.hasClass(el.parentNode, "type")) {
+		$XH.removeClass(el, "part");
+		checkAll(el, ifChecked);
+	} else {
+		planData.setArr("cameras", params.key, ifChecked);
+		checkOne(params.key, el, ifChecked);
+	}
+}]]);
+//新增和修改Plan时dialog， data用于判断添加/修改
+function _showPlanDialog(id, okFn, data){
+	storeCaller("getDevices4Plan", {siteId: id}, function(result){
+		if (isOCC && result.msg)
+			nvAlert(result.msg);
+		if (!data.id && result.storages.length === 0)
+			return nvAlert("请添加存储服务器后再添加录像计划！");
+		if (!data.id && !isOCC && result.cameras.length === 0)
+			return nvAlert("请添加摄像机后再添加录像计划！");
+		if (!data.id && isOCC && result.monitors.length ===0)
+			return nvAlert("请添加监视器后再添加录像计划！");
+		caseCameraPanel = null;
+		planData = new PlanVM(data, result);
+		function _okFn(){
+			if (!isHandle) return;
+			var params = planData.getData();
+			var name = $X("plan_name").value.trim();
+			if (!name) 
+				return nvAlert("计划名称不能为空！");
+			if (!params) return;
+			params.name = name;
+			var showStorages = IX.loop(result.storages, [], function(acc, storage){
+				for (var i = 0; i < params.storages.length; i++) {
+					if(params.storages[i] == storage.id)
+						acc.push(storage.name);
+				}
+				return acc;
+			});
+			storeCaller(data.id ? "editPlan": "addPlan", params, function(showData){
+				okFn(data.id ? IX.inherit(params, {storages: showStorages}): showData);
+				hideDialog();
+			});
+		}
+		showDialog({
+			clz : "store-edit",
+			title : isHandle ? (data.id ? "编辑录像计划" : "新增录像计划") : "查看录像计划",
+			content : t_edit.renderData("", planData.getTplData()),
+			listen : {ok : _okFn}
+		});
+		if (isOCC)
+			jQuery(".title_1").get(0).innerHTML = "控制中心";
+		if (!isHandle) {
+			var $content = jQuery(".content");
+			$content.find("input").each(function(){this.disabled = true;});
+			$content.find("button").attr("data-toggle", "");
+			$content.find(".pic-").hide();
+			$content.find(".delete-day").hide();
+			jQuery(".btn.okbtn").hide();
+		}
+	});
+}
+//plan的增改操作
+function _editPlan(plan, okFn){
+	storeCaller("getPlan", {id : plan ? plan.id : -1}, function(data){
+		var id = jQuery(".nv-tree .select").attr("data-key") || CurrentSite.id;
+		_showPlanDialog(id, okFn, data);
+	});
+}
+</script>
+	
+<tpl id="page">
+<div id="Tree" class="{clz}"><div id="treeName">{treeName}</div>{tree}</div>
+<div id="show-plan" class="nv-box">
+	<div class="nv-title">录像计划</div>
+	<ul class="store-plans"></ul>
+</div>
+</tpl>
+
+<tpl id="showPlan">
+	<tpl id="plans">
+		<li class="{hasClz}"><a data-href="$store.edit" data-key="{id}">
+			<div class="pic-">
+				<div><span class="label">存储服务器：</span><span>{ssNames}</span></div>
+				<div><span class="label">保存周期：</span><span>{circle}天</span></div>
+				<div><span class="label">日期计划：</span><span>{days}</span></div>
+				<div><span class="label">录像时间：</span><span>从{from}至{to}</span></div>
+			</div>
+			<div class="name">{name}</div>
+		</a><a class="pic-del" data-href="$store.delete" data-key="{id}">
+		</a></li>
+	</tpl>
+	<li class="{clz}"><a data-href="$store.add">
+		<div class="pic-"></div>
+		<div class="name">添加录像计划</div>
+	</a></li>
+</tpl>
+			
+<script>
+var planHT = new IX.IListManager();
+//获取页面显示的plan数据
+function getPlanTpldata(plan){
+	var planDays = plan.days;
+	if (plan) {
+		return IX.inherit(plan, {
+			days : planDays == "all"? "全周": IX.map(planDays, function(n){
+				return TCM.Const.Days[n] || "";
+			}).join(),
+			ssNames : Array.isArray(plan.storages)? plan.storages.join(): ""
+		});
+	} else {
+		return IX.inherit(plan, {
+			days : "",
+			ssNames : ""
+		});
+	}
+}
+
+globalActionConfig([["store.add", function(params, el){
+	_editPlan(null, function(plan){
+		planHT.register(plan.id, plan);
+		plan.hasClz = "hasHover";
+		var html = t_showPlan.renderData("plans", getPlanTpldata(plan));
+		jQuery(html).insertBefore(el.parentNode);
+	});
+}], ["store.edit", function(params, el){
+	var planId = params.key;
+	var plan = planHT.get(planId);
+	if (!plan)
+		return;
+	_editPlan(plan, function(_plan){
+		planHT.register(plan.id, _plan);
+		plan.hasClz = "hasHover";
+		var html = t_showPlan.renderData("plans", getPlanTpldata(_plan));
+		el.parentNode.innerHTML = html.substring('<li class="hasHover">'.length, html.length-"</li>".length);
+	});
+}], ["store.delete", function(params, el){
+	if (!isHandle) return;
+	var planId = params.key;
+	var plan = planHT.get(planId);
+	if (!plan)
+		return;
+	confirmDialog("删除录像计划", "请确认是否删除此录像计划?", function(cbFn){
+		storeCaller("deletePlan", {ids : [plan.id]}, function(){
+			planHT.remove(planId);
+			var liEl = el.parentNode;
+			liEl.parentNode.removeChild(liEl);
+			hideDialog();
+		});
+	});
+}]]);
+//站点为中心时候的tree显示
+function getOCCTreeHTML(){
+	var lineInfo = TCM.LineInfo.getSites().getAll();
+	var nodes = IX.loop(lineInfo, [], function(acc, site){
+		if (site.type !== 0 && site.type !== 4 && site.type !== 5 && site.type !== 6)
+			acc.push({name : site.name, key: site.id, nodes: []});
+		return acc;
+	});
+	var treeCfg = IX.inherit({nodes : [{name : TCM.LineInfo.getName(), nodes : nodes}]}, {
+		htmlFn : function(node){return '<span class="nodeName">'+node.name+'</span>';},
+		click : function(params, el){
+			var id = params.keys;
+			if (id != CurrentSite.id)
+				isHandle = false;
+			else
+				isHandle = true;
+			showPlan({siteId : id}, isHandle);
+		}
+	});
+	return new TCM.Lib.Tree(treeCfg).getHTML();
+}
+
+function resizeFn(){
+	var height = jQuery("#show-plan").height();
+	jQuery("#Tree").css("height", height + "px");
+	jQuery(".nv-tree").css("height", height - 50 + "px");
+}
+//plan的展示函数
+function showPlan(cfg, isHandle){
+	storeCaller("getPlans", cfg, function(plans){
+		var tpldatas = IX.map(plans, function(plan){
+			planHT.register(plan.id, plan);
+			return getPlanTpldata(plan);
+		});
+		var ul = jQuery("#show-plan").find(".store-plans");
+		if (isHandle) {
+			ul.get(0).innerHTML = t_showPlan.renderData("", {
+				plans : IX.map(tpldatas, function(tpldata){
+					tpldata.hasClz = "hasHover";
+					return tpldata;
+				}),
+				clz : "add"
+			});
+		} else {
+			ul.get(0).innerHTML = t_showPlan.renderData("", {
+				plans : tpldatas,
+				clz : "notOCC"
+			});
+		}
+	});
+}
+
+IX.ns("TCM.Store");
+TCM.Store.init = function(pageCfg, pageParams, cbFn){
+	isOCC = TCM.Env.getSession().getCurrentSiteType() == 1;
+	CurrentSite = TCM.Env.getSession().getCurrentSite();
+	planHT.clear();
+	if (isOCC) {
+		var treeHTML = getOCCTreeHTML();
+		$X('body').innerHTML = t_page.renderData("", {
+			treeName : "线路录像列表",
+			clz: "",
+			tree: treeHTML
+		});
+		jQuery(".nv-tree>ul ul").hide();
+		jQuery("#Tree span.nodeName").each(function(){
+			if(this.innerHTML == CurrentSite.name)
+				this.click();		
+		});
+		jQuery(".nv-tree span:first").click();
+		resizeFn();
+		$Xw.bind({"resize": resizeFn});
+	} else {
+		isHandle = true;
+		$X('body').innerHTML = t_page.renderData("", {
+			treeName : "",
+			clz: "notOCC",
+			tree: ""
+		});
+		showPlan({}, isHandle);
+	}
+	cbFn();
+};
+</script>

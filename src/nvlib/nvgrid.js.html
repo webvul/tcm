@@ -1,0 +1,292 @@
+<script>
+var globalActionConfig = IXW.Actions.configActions;
+var ixwGrid = IXW.Lib.Grid;
+</script>
+<tpl id="pagin">
+	<div id="{id}-indics" class="l"><tpl id="indics">
+		从<span>{stx}</span>到<span>{endx}</span>/共<span>{pagex}</span>条数据
+	</tpl></div>
+	<div class="m">{paginHTML}</div>
+	<div class="r">
+		<span>显示</span><div class="page">
+		<div class="dropdown">
+			<a class="changePage dropdown-toggle" data-toggle="dropdown">
+				<span id="curPage" class="pagesize">{pageInfo}</span><span class="pgFrame"><span class="pic-pg"></span></span>
+			</a>
+			<ul class="dropdown-menu"><tpl id="list"><li class="{clz}" id="{id}">
+				<a class="pagesize" data-href="$nvpagin.change" data-key="{value}" data-target="{id}">{html}</a>
+			</li></tpl></ul>
+		</div></div>
+	</div>
+</tpl>
+<script>
+var PagesizeList = [
+{id : "page-0",value : 20, text : "每页20条"},
+{id : "page-1",value : 50, text : "每页50条"},
+{id : "page-2",value : 100, text : "每页100条"}
+];
+var currentPageSize = PagesizeList[0];
+
+function getPaginTpldata(id){ return {
+	id : id,
+	indics: [{stx : 0,endx : 0, pagex : 0}],
+	paginHTML : "",
+	pageInfo : currentPageSize.text,
+	list : IX.map(PagesizeList,function(item){return {
+		value : item.id,
+		clz : item.id == currentPageSize.id ? "disabled" : "",
+		html : item.text
+	};})
+};}
+
+var paginListeners = {};
+globalActionConfig([["nvpagin.change",function(params,el){
+	var liEl = el.parentNode;
+	if ($XH.hasClass(liEl, "disabled"))
+		return;
+	var _el = $XH.ancestor(liEl, "dropdown");
+	var curpsEl = $XH.first($XD.first(_el, "a"), "pagesize");
+	curpsEl.innerHTML = el.text;
+
+	$XH.removeClass($XH.first(liEl.parentNode,  "disabled"), "disabled");
+	$XH.addClass(liEl, "disabled");
+
+	currentPageSize = PagesizeList[params.key.split("-").pop()];
+	var fn = paginListeners[$XD.dataAttr(el, "target")];
+	if (IX.isFn(fn))
+		fn(currentPageSize.value);
+}]]);
+
+function NVPagination(id){
+	var inst = new IXW.Lib.Pagination({
+		id : id + "-pagin",
+		total : 0,
+		current : 0
+	});
+	var tpldata = getPaginTpldata(id);
+	tpldata.paginHTML = inst.getHTML();
+
+	return {
+		getHTML : function(){return t_pagin.renderData("", tpldata);},
+		getCurrentPageNo : function(){return inst.getCurrentPageNo();},
+		bind : function(pageNoChangedFn, pageSizeChangeFn){
+			inst.bind(pageNoChangedFn);
+			paginListeners[id] = function(pageSize){
+				// pageSizeChangeFn(inst.getCurrentPageNo(), pageSize);
+				pageSizeChangeFn(0, pageSize);
+			};
+		},
+		jump : inst.jump,
+		refresh : function(totalPages, currentPageNo, itemNum, onlyData){
+			inst.apply(currentPageNo, totalPages, onlyData);
+			tpldata.paginHTML = inst.getHTML();
+			var stx = currentPageNo * currentPageSize.value;
+			tpldata.indics = [{stx : stx, endx : stx + itemNum, pagex : itemNum}];
+			var el = $X(id + "-indics");
+			if (!onlyData && el)
+				 el.innerHTML = t_pagin.renderData("indics", tpldata.indics[0]);
+		}
+	};
+}
+
+</script>
+<tpl id="tools">
+	<div id="{id}_tool"><tpl id="btns">
+		<a class="btn-{name} {clz}" data-href="$nvtool.click" data-target="{id}" data-key="{name}"></a>
+	</tpl></div>
+</tpl>
+<script>
+var toolListens = {};
+globalActionConfig([["nvtool.click", function(params, el){
+	if ($XH.hasClass(el, "disabled")) return;
+	var fn = toolListens[$XD.dataAttr(el, "target")];
+	if (IX.isFn(fn))
+		fn(params.key);
+}]]);
+
+/** cfg :{
+	buttons : [{name:, chkEnabled :}]
+	actions : {
+		name : function(){}
+	}	
+   }
+ */
+function NVTools(id, cfg){
+	var tpldata = {
+		id : id,
+		btns : IX.map($XP(cfg, "buttons", []), function(btn){ return {
+			name : btn.name,
+			clz : $XP(btn, "chkEnabled", true)? "chkEnable disabled" : ""
+		};})
+	};
+	toolListens[id] = function(name){$XF(cfg, "actions." + name)();};
+	function _enable(isEnabled){
+		var el = jQuery("#" + id + "_tool .chkEnable");
+		el[isEnabled?"removeClass":"addClass"]("disabled");
+	}
+	return {
+		getHTML : function(){return t_tools.renderData("", tpldata);},
+		enable : function() {_enable(true);},
+		disable : function(){_enable(false);}
+	};
+}
+
+</script>
+<tpl id="grid">
+<div id="{id}" class="nv-grid nv-box {gridClz}">
+	<div class="nvgrid-title nv-title">{title}</div>
+	<div class="nvgrid-tools">{toolHTML}</div>
+	<div class="nvgrid-body">{gridHTML}</div>
+	<div class="nvgrid-foot">{paginHTML}</div>
+</div>
+</tpl>
+<script>
+/** cfg : {
+	container : //required
+	id, // optional
+
+	clz : gridClz,
+	title : "XXX"
+	
+	usePagination : false; default true;
+	
+	rowModel : function(rowData, colModels), //optional
+	columns : [name],
+	actions : [[name, function(rowModel, rowEl)]]
+	dataLoader : function(params, cbFn)
+	clickOnRow : function(rowId)
+
+	tools : {
+		buttons : [{name, chkEnabled}]
+		actions : {
+			name : function(){}
+		}	
+	}
+}
+ */
+IX.ns("NV.Lib");
+NV.Lib.Grid = function(cfg){
+	var container = $XP(cfg,  "container");
+	var id = cfg.id || IX.id();
+
+	var toolCfg = $XP(cfg, "tools");
+	var usePagination = $XP(cfg, "usePagination", true);
+	var clickOnRow = $XF(cfg, "clickOnRow");
+
+	var grid = new IXW.Lib.Grid(IX.inherit(cfg, {
+		id : id + "-grid",
+		pageSize : currentPageSize.value,
+		dataLoader : $XF(cfg, "dataLoader")
+	}));
+	var model = grid.getModel();
+
+	function applyHover(){
+		jQuery($X(container)).find(".row").hover(
+			function(){$XH.addClass(this, "hover");},
+			function(){$XH.removeClass(this, "hover");}
+		);
+	}
+	function _getSelectedCells(){
+		return jQuery("#" + id + "-grid").find(".row .selected");
+	}
+	
+	var pagin =	null, tools = null, onselectRow = IX.emptyFn;
+	function afterLoaded(pageNo, items, onlyData){
+		grid.refresh(onlyData);
+		if (!onlyData)
+			applyHover();
+		if(pagin)
+			pagin.refresh(model.getPageCount(), pageNo, items.length, onlyData);
+		if (tools)
+			tools.disable();
+	}
+	function loadPage(pageNo){
+		model.load(pageNo, function(items){afterLoaded(pageNo, items);});
+	}
+	if (toolCfg) {
+		tools = new NVTools(id, toolCfg);
+		onselectRow = function(){
+			var selectedCells = _getSelectedCells();
+			tools[selectedCells.length>0?"enable":"disable"]();
+		};
+	}
+
+	grid.colAction = function(name, colEl){
+		if (name == "_check"){
+			var el = jQuery(colEl);
+			var ifAllSelected = el.find(".checkbox").hasClass("selected");
+			var checkboxEls = el.parents(".ixw-grid").find(".col-_check .checkbox");
+			checkboxEls[ifAllSelected?"removeClass":"addClass"]("selected");
+			onselectRow();
+		}
+	};
+	grid.cellAction = function(rowId, cellName, cellEl){
+		if (cellName == "_check"){
+			$XH.toggleClass($XH.first(cellEl, "checkbox"), "selected");
+			var isChoseAll = true;
+			jQuery(".ixw-grid .body").find(".checkbox").each(function(){
+				if (!$XH.hasClass(this, "selected")) isChoseAll = false;
+			});
+			var choseAllEl = jQuery(".ixw-grid").find(".hdr .checkbox")[0];
+			if (isChoseAll){
+				$XH.addClass(choseAllEl,"selected");
+			}else{
+				$XH.removeClass(choseAllEl,"selected");
+			}
+			onselectRow();
+		} else {
+			clickOnRow(rowId, cellName, cellEl);
+		}
+	};
+
+	if (usePagination){
+		pagin = new NVPagination(id);
+		pagin.bind(loadPage, function(pageNo, pageSize){
+			model.resetPage(pageNo, pageSize, function(items){
+				afterLoaded(pageNo, items);
+			});
+		});
+	}
+
+	function _show(items){
+		var el = $X(container);
+		if (!el)
+			return;
+		afterLoaded(0, items, true);
+		el.innerHTML = t_grid.renderData("", {
+			id : id, 
+			gridClz : $XP(cfg, "clz", ""),
+			title : $XP(cfg, "title",  ""),
+			toolHTML : tools ? tools.getHTML() :"",
+			gridHTML : grid.getHTML(),
+			paginHTML : pagin?pagin.getHTML() : ""
+		});
+		applyHover();
+	}
+	function _refresh(pageNo){
+		jQuery('.nvgrid-body .col-_check .checkbox').removeClass("selected");
+		jQuery('.nvgrid-tools .chkEnable').addClass("disable");
+		if (pagin) pagin.jump(pageNo);
+		else loadPage(0);
+	}
+	return {
+		getModel : function(){return model;},
+		getSelectedRows : 	function(){
+			return IX.map(_getSelectedCells(), function(el){
+				var _el = $XH.ancestor(el, "row");
+				return model.getRow($XD.dataAttr(_el, "id"));
+			});
+		},
+		addItems : function(ids){
+			model.addItems(ids);
+			_refresh(model.getPageCount()-1);
+		},
+		removeItems : function(ids){
+			model.removeItems(ids);
+			_refresh(Math.min(pagin ? pagin.getCurrentPageNo(): 0, model.getPageCount()-1));
+		},
+		show: function(){model.load(0, _show);},
+		refresh : function(pageNo){_refresh(pageNo);}
+	};
+};
+</script>

@@ -1,0 +1,750 @@
+<script>
+var deviceCaller = TCM.Global.deviceAndZoneCaller;
+var globalActionConfig = IXW.Actions.configActions;
+var deviceNames = TCM.Const.DeviceTypeNames;
+
+var showDialog = NV.Dialog.show;
+var hideDialog = NV.Dialog.hide;
+var confirmDialog = NV.Dialog.confirm;
+
+var getComboHTML = NV.Lib.getComboHTML;
+var cameraTree = TCM.Lib.CameraTree;
+
+var nvAlert = NV.Dialog.alert;
+
+var CurrentSite = null;
+var isOCC = null;
+var isHandle = null;
+var driverHT = {};
+var drivers = null;
+
+var spliterHTML = null;
+var decoderHTML = null;
+// input搜索框暂未使用
+</script>
+<tpl id="input"><div><input class="search" placeholder="设备选择"><a class="pic-search"></a></div></tpl>
+<tpl id="info">
+	<div id="Tree"><div id="treeName">{treeName}</div>{treeData}
+		<div class="addZone">{addZone}
+		</div>
+	</div>
+	<div id="Grid" class="{showZone}"></div>
+</tpl>
+
+<tpl id="addZone"><a data-href="$zone.add"><span></span>添加分区</a></tpl>
+
+<tpl id="title">
+	<a class="grid-navbar chooseBar" data-href="$show.grid" data-zoneId="{zoneId}" data-siteId="{siteId}" data-types="{types}">{name4Zone}</a>
+	<span class="vertical">|</span>
+	<a class="grid-navbar" data-href="$show.map" data-zoneid="{zoneId}" data-siteid="{siteId}">地图</a>
+</tpl>
+<script>
+/*在Grid创建出来后绑定自适应缩放函数*/
+function resizeGridFn(desc){
+	var height = jQuery("#Grid").height();
+	jQuery("#Tree").css("height", height + "px");
+	if (!desc)
+		jQuery(".nv-tree").css("height", height - 55 + "px");
+	else
+		jQuery(".nv-tree").css("maxHeight", height - 85 + "px");
+}
+/*创建设备表格*/
+function createDeviceGrid(cfgs, treeCfg){
+	var grid = null;
+	var columns = ["_checkbox"].concat($XP(cfgs, "columns").split(","));
+	var types = treeCfg.types;
+	var siteId = treeCfg.siteId;
+	var length = treeCfg.types.length;
+
+	function createItem(_cbFn){
+		TCM.DeviceDialog.createDevice(types, function(data){
+			_cbFn(data);
+		}, siteId);
+	}
+	function deleteItems(rowModels, _cbFn){
+		TCM.DeviceDialog.deleteDevices(rowModels, function(){
+			_cbFn();
+		}, siteId);
+	}
+	grid = new TCM.Lib.Grid($XP(cfgs, "container", 'Grid'),{
+		title : $XP(treeCfg, "name"),
+		grid : {
+			clz : length>=15?"device-list":"device-list-"+treeCfg.types[0],
+			columns: columns,
+			actions : isHandle ? ["delete", ["edit", "编辑", function(rowModel, rowEl){
+				TCM.DeviceDialog.editDevice(rowModel, function(){
+					grid.refresh();
+				}, siteId);
+			}]] : [],
+			hasCheckbox : $XP(cfgs, "hasCheckbox") || true,
+			usePagination : $XP(cfgs, "usePagination") || true,
+			dataLoader : function(params, _cbFn){
+				deviceCaller("getDevices4Type", IX.inherit(params, {
+					types: treeCfg.types,
+					siteId: treeCfg.siteId
+				}), function(data){
+					_cbFn(data);
+					resizeGridFn();
+					$Xw.bind({"resize": resizeGridFn});
+				});
+			}
+		},
+		tools : {
+			buttons: isHandle ? (types.length > 7 ? ["refresh", "delete"] : ["refresh", "create", "delete"]) : ["refresh"]
+		},
+		listen : {
+			createItem: createItem,
+			deleteItems: deleteItems
+		}
+	});
+}
+/*创建分区表格*/
+function createZoneGrid(treeCfg){
+	var types = treeCfg.types;
+	var zoneId = treeCfg.zoneId;
+	var siteId = treeCfg.siteId;
+	function createFn(_cbFn){
+		TCM.ZoneDialog.addCameras(types, function(data){
+			_cbFn(data);
+		});
+	}
+	function deleteFn(rowModels, _cbFn){
+		TCM.TreeDialog.deleteCameras(rowModels, function(){
+			_cbFn();
+		}, siteId, zoneId);
+	}
+	var titleHTML = t_title.renderData("", {
+		zoneId: zoneId,
+		siteId: siteId,
+		types: types,
+		name4Zone: treeCfg.name+"列表"
+	});
+	return new TCM.Lib.Grid($XP(treeCfg, "container", 'Grid'),{
+		title : titleHTML,
+		grid : {
+			clz : "device-list",
+			columns: ["_checkbox","devType","devName","devDesc"],
+			actions : isOCC ? [] : ["delete"],
+			hasCheckbox : true,
+			usePagination : true,
+			dataLoader : function(params, _cbFn){
+				deviceCaller("getCamerasByZone", IX.inherit(params, {
+					types: types,
+					siteId: siteId,
+					id: zoneId
+				}), function(data){
+					_cbFn(data);
+					if(jQuery(".select").length === 0)
+						jQuery(".btn-create").removeClass("btn-create").addClass("btn-discreate");
+					jQuery("#Grid").removeClass("showMap");
+					resizeGridFn(!isOCC);
+					$Xw.bind({"resize": function(){
+						resizeGridFn(!isOCC);
+					}});
+				});
+			}
+		},
+		tools : {
+			buttons: isOCC ? ["refresh"] : ["refresh", "create", "delete"]
+		},
+		listen : isOCC? {} : {
+			createItem : createFn,
+			deleteItems : deleteFn
+		}
+	});
+}
+/*绑定分区地图切换对于class的操作*/
+function toggleClass(el){
+	jQuery(".grid-navbar").removeClass("chooseBar");
+	jQuery(el).addClass("chooseBar");
+	jQuery("#Grid").toggleClass("showMap");
+	jQuery("#body").toggleClass("disable-scroll");
+}
+globalActionConfig([
+	["zone.add", function(params, el, evt){TCM.TreeDialog.addZone(params, el, CurrentSite);}],
+	["zone.delete", function(params, el, evt){TCM.TreeDialog.deleteZone(params, el);}],
+	["zone.edit", function(params, el, evt){TCM.TreeDialog.editZone(params,el, CurrentSite);}],
+	["show.grid", function(params, el, evt){
+		toggleClass(el);
+		var $this = jQuery(el);
+		createZoneGrid({
+			types: $XD.dataAttr(el, "types").split(","),
+			siteId: $XD.dataAttr(el, "siteid"),
+			zoneId: $XD.dataAttr(el, "zoneid"),
+			name: $this.html().slice(0, -2)
+		});
+	}],
+	["show.map", function(params, el, evt){
+		var zoneId = $XD.dataAttr(el, "zoneid");
+		if(!zoneId)
+			return nvAlert("请先添加分区，再查看地图信息！");
+		toggleClass(el);
+		jQuery(".nvgrid-tools").remove();
+		jQuery(".nvgrid-foot").remove();
+		var zoneMap = new TCM.Lib.Map(jQuery(".nvgrid-body").get(0), {
+			siteId: $XD.dataAttr(el, "siteid"),
+			zoneId: zoneId
+		}, isOCC);
+		zoneMap.show();
+	}]
+]);
+
+var DeviceGridCfgs = {
+	"all" : {columns: "devType,devName,devDesc"},
+	"server" : {columns: "devType,devName,devIp,devVersion,devDesc"},
+	"storage" : {columns: "devName,devManageIp,devPort,devdiskNum,devCapacity,devDesc"},
+	"IPC" : {columns: "devType,devName,Provider,Style,devIp,devPort,devDesc"},
+	"camera" : {columns: "devType,devName,devProvider,devStyle,devDesc"},
+	"pickup" : {columns: "devType,devName,devProvider,devStyle,devDesc"},
+	"coder" : {columns: "devName,Provider,Style,devIp,devPort,devChannelNum,devDesc"},
+	"decoder" : {columns: "devName,Provider,Style,devIp,devPort,devChannelNum,devDesc"},
+	"spliter" : {columns: "devName,Provider,Style,devMaxWindow,devDesc"},
+	"monitor" : {columns: "devName,devProvider,devStyle,devDesc"},
+	"terminal" : {columns: "devName,devIp,devDesc"},
+	"vdm" : {columns: "devName,Provider,Style,devDesc"},
+	"other" : {columns: "devType,devName,devProvider,devStyle,devPath,devDesc"}
+};
+/*设备管理tree的点击事件*/
+function deviceTreeClick(params){
+	var types = IX.map(params.keys.split(","),function(type){return Number(type);});
+	var gridCfgType = TCM.DeviceType.getNodeName(types[0]);
+	if(types.length > 6)
+		gridCfgType = "all";
+	if(params.siteId == CurrentSite.id)
+		isHandle = true;
+	else
+		isHandle = false;
+	createDeviceGrid(DeviceGridCfgs[gridCfgType], {
+		types: types,
+		siteId: params.siteId,
+		name: params.name + "列表",
+		el: params.el
+	});
+}
+/*分区管理tree的点击事件*/
+function zoneTreeClick(params){
+	var types = IX.map(params.keys.split(","),function(type){return Number(type);});
+	createZoneGrid({
+		types: types,
+		siteId: params.siteId,
+		zoneId: params.zoneId,
+		name: IX.encodeTXT(params.name)
+	});
+	jQuery("#body").removeClass("disable-scroll");
+}
+/*构造设备tree节点数据，供tree组件使用*/
+function parseTree(treeInfo, countHT, siteId) {
+	function getTreeNode(_treeNodes){
+		return IX.map(_treeNodes, function(treeNode){
+			return IX.inherit(treeNode, getAttr(treeNode));
+		});
+	}
+	function getAttr(treeNode){
+		if(treeNode.key)
+			return {
+				key : treeNode.key,
+				count : countHT[treeNode.key[0]] ? countHT[treeNode.key[0]] : 0,
+				siteId : siteId,
+				nodes : []
+			};
+		var arr = [], count = 0;
+		var nodes = treeNode.nodes === 0 ? [] : getTreeNode(treeNode.nodes);
+		for (var i = 0; i < nodes.length; i++) {
+			arr = arr.concat(nodes[i].key);
+			count += nodes[i].count;
+		}
+		return {
+			key : arr,
+			count : count,
+			siteId : siteId,
+			nodes : nodes
+		};
+	}
+	if(isOCC)
+		return getTreeNode(treeInfo).pop();
+	return {nodes : getTreeNode(treeInfo)};
+}
+/*构造tree基础节点*/
+function getLeafInfo(arr){
+	return IX.map(arr, function(item, idx){
+		return {name: deviceNames[item], key: [item]};
+	});
+}
+var TreeInfo = [
+{name : "",  nodes : [
+	{name : '服务器', nodes : getLeafInfo([1, 2, 3])},
+	getLeafInfo([10])[0],
+	{name : '数字摄像机', nodes : getLeafInfo([20, 21, 22])},
+	{name : '模拟摄像机', nodes : getLeafInfo([31, 32, 33])},
+	{name : '拾音器', nodes : getLeafInfo([40, 41])},
+	getLeafInfo([50])[0],
+	getLeafInfo([51])[0],
+	getLeafInfo([52])[0],
+	getLeafInfo([53])[0],
+	getLeafInfo([54])[0],
+	getLeafInfo([65])[0],
+	{name : '网络和附属设备', nodes : getLeafInfo([60, 61, 62, 63, 64, 90])}
+]}];
+var CurrentOne = {name: "", nodes: [
+	{name : '服务器', nodes : getLeafInfo([0, 1, 2, 3])},
+	getLeafInfo([10])[0],
+	getLeafInfo([51])[0],
+	getLeafInfo([53])[0],
+	getLeafInfo([54])[0],
+	{name : '网络和附属设备', nodes : getLeafInfo([60, 61, 62, 63, 64, 90])}
+]};
+/*通过设备回调函数，获得tree的显示*/
+function getDevices(cbFn){
+	deviceCaller("getAllDevices", {}, function(data){
+		if(isOCC){
+			var arrCount = IX.map(data, function(site, idx){
+				var countHT = {};
+				IX.iterate(site.devices, function(device){
+					countHT[device.type] = device.count;
+				});
+				var lineSite = TCM.LineInfo.getSites().get(site.siteId);
+				var arr = [];
+				if(lineSite.type == 1){
+					arr = [IX.inherit(CurrentOne, {name: lineSite.name})];
+				}else{
+					TreeInfo[0].name = lineSite.name;
+					arr = TreeInfo;
+				}
+				return parseTree(arr, countHT, site.siteId);
+			});
+			cbFn({nodes : arrCount});
+		}else{
+			TreeInfo[0].name = CurrentSite.name;
+			var countHT = {},site = {};
+			IX.iterate(data, function(obj){
+				site = obj;
+				IX.iterate(obj.devices, function(device){
+					countHT[device.type] = device.count;
+				});
+			});
+			cbFn(parseTree(TreeInfo, countHT, site.siteId));
+		}
+	});
+}
+/*构造分区tree节点数据，供tree组件使用*/
+function getZoneNode(data, siteName){
+	var siteId = data.siteId;
+	var nodeList = IX.map(data.zones, function(zone){
+		var zoneId = zone.id;
+		var total = zone.total;
+		var zoneTreeInfo = [
+			{name: "枪机", key:[20,31], count: total.fixed},
+			{name: "半球", key:[21,32], count: total.semi},
+			{name: "球机", key:[22,33], count: total.sphere}
+		];
+		return {
+			name: zone.name,
+			key: [20,21,22,31,32,33],
+			count: total.fixed + total.semi + total.sphere,
+			zoneId: zoneId,
+			siteId: siteId,
+			nodes: IX.map(zoneTreeInfo, function(data){
+				return IX.inherit(data,{
+					zoneId: zoneId,
+					siteId: siteId,
+					nodes:[]
+				});
+			})
+		};
+	});
+	return {
+		name: siteName,
+		nodes: nodeList
+	};
+}
+/*通过分区回调函数，获得tree的显示*/
+function getCamerasZone(cbFn){
+	deviceCaller("getAllZones", {}, function(data){
+		var allSites = TCM.LineInfo.getSites();
+		if (isOCC)
+			cbFn({
+				nodes: IX.loop(data, [], function(acc, item){
+					if (CurrentSite.id != item.siteId)
+						acc.push(getZoneNode(item, allSites.get(item.siteId).name));
+					return acc;
+				})
+			});
+		else
+			cbFn({nodes: [getZoneNode(data.pop(), CurrentSite.name)]});
+	});
+}
+/*Tree初始化节点显示*/
+function showTreeNode(){
+	if(isOCC){
+		jQuery(".nv-tree>ul>li>ul>li").children("ul").hide();
+		jQuery(".nv-tree>ul>li").children('ul').hide();
+	}else{
+		jQuery(".nv-tree>ul>li>ul>li").children("ul").hide();
+	}
+	jQuery(".nv-tree>ul>li>a span.count").hide();
+}
+/*展示设备管理页面*/
+function showDeviceList(cbFn){
+	getDevices(function(_cfg){
+		var cfg = IX.inherit(_cfg, {
+			htmlFn : function(node) {
+				return '<span class="nodeName" title='+IX.encodeTXT(node.name)+'>'+IX.encodeTXT(node.name)+'</span>'+'<span class="count">('+node.count+')</span>';
+			},
+			click : deviceTreeClick
+		});
+		var tree = new TCM.Lib.Tree(cfg);
+		$X('body').innerHTML = t_info.renderData("", {
+			treeName : isOCC? "线路设备列表" : "单位设备列表",
+			treeData : tree.getHTML(),
+			addZone : "",
+			showZone : ""
+		});
+		showTreeNode();
+		if(isOCC){
+			jQuery("[data-name="+CurrentSite.name+"]").find("span").each(function(index, el) {
+				if(index === 0 || index === 2)
+					this.click();
+			});
+		}else{
+			var span = jQuery(".nv-tree li:first a:first span.count");
+			span.parents("li").removeClass("expand").addClass("fold");
+			span.click();
+		}
+		jQuery("#body").removeClass("disable-scroll");
+	});
+	cbFn();
+}
+/*展示分区管理页面*/
+function showZoneList(cbFn){
+	getCamerasZone(function(_cfg){
+		var cfg = IX.inherit(_cfg, {
+			htmlFn : function(node) {
+				var deleteZone = isOCC ? "" :
+					(node.zoneId && node.nodes.length == 3 ? '<a class="deleteZone r" data-href="$zone.delete" data-key="'+node.zoneId+'"></a><a class="editZone r" data-href="$zone.edit" data-key="'+node.zoneId+'"></a>' : "");
+				return '<span class="nodeName" title='+IX.encodeTXT(node.name)+'>'+IX.encodeTXT(node.name)+'</span>'+'<span class="count">('+node.count+')</span>'+deleteZone;
+			},
+			click : zoneTreeClick
+		});
+		var tree = new TCM.Lib.Tree(cfg);
+		$X('body').innerHTML = t_info.renderData("", {
+			treeName : isOCC? "线路分区列表" : "单位分区列表",
+			treeData : tree.getHTML(),
+			addZone : isOCC ? "" : t_addZone.renderData("",{}),
+			showZone : "showZone"
+		});
+		showTreeNode();
+		var span = jQuery(".nv-tree li:first li:first a:first span.count");
+		if(span.length === 0){
+			zoneTreeClick({keys: "20,21,22,31,32,33",name: "", zoneId: "", siteId : CurrentSite.id});
+		}else{
+			span.click();
+			if(!isOCC)
+				jQuery(span.parents("li")[1]).removeClass("expand").addClass("fold");
+			else
+				jQuery(".nv-tree>ul>li>a>.pic-expand").get(0).click();
+		}
+	});
+	cbFn();
+}
+</script>
+<tpl id="videoEdit">
+<ul class="videoWallEdit">
+	<li><span class="label">监视器</span>{relatedMonitor}</li>
+	<li><span class="label">关联的设备类型</span>{relatedSD}</li>
+	<li><span class="label choose">关联设备</span>{relatedSDR}</li>
+</ul>
+</tpl>
+
+<tpl id="page">
+<div id="Tree" class="{clz}"><div id="treeName">{treeName}</div>{tree}</div>
+<div id="show-plan" class="nv-box">
+	<div class="nv-title">电视墙</div>
+	<ul class="store-plans"></ul>
+</div>
+</tpl>
+
+<tpl id="showPlan">
+	<tpl id="plans">
+		<li class="{hasClz}"><a data-href="$video.edit" data-key="{id}">
+			<div class="pic-">
+				<div><span class="label">监视器：</span><span>{monitorName}</span></div>
+				<div><span class="label">(厂家 型号)：</span><span title="{monitorProvider} {monitorStyle}">{monitorProvider} {monitorStyle}</span></div>
+				<div><span class="label">{relatedName}</span><span>{machineName}</span></div>
+				<div><span class="label">(厂家 型号)：</span><span title="{machineProvider}">{machineProvider}</span></div>
+			</div>
+		</a><a class="pic-del" data-href="$video.delete" data-key="{id}">
+		</a></li>
+	</tpl>
+	<li class="{clz}"><a data-href="$video.add">
+		<div class="pic-"></div>
+		<div class="name">添加电视墙</div>
+	</a></li>
+</tpl>
+
+<script>
+var videoWallHT = new IX.IListManager();
+/*电视墙的添加和修改dialog显示*/
+function _show(site, okFn, data, isEdit){
+	if (isEdit) {
+		data.notRelatedMonitor.unshift(data.monitor);
+		if(data.spliter.id)
+			data.notRelatedSpliter.unshift(data.spliter);
+		if(data.decoder.id)
+			data.notRelatedDecoder.unshift(data.decoder);
+	}
+	if (!isEdit && data.notRelatedMonitor.length === 0)
+		return nvAlert("请添加监视器后再添加电视墙！");
+	if (!isEdit && isOCC && data.notRelatedDecoder.length === 0)
+		return nvAlert("没有可用的解码器！");
+	if (!isEdit && data.notRelatedSpliter.length === 0 && data.notRelatedDecoder.length === 0)
+		return nvAlert("没有可用的画面分割器或解码器！");
+	function comboHTML(caller, name, items){
+		return getComboHTML(caller, {
+			value: name.id || "",
+			valueText: name.name || "",
+			items: IX.map(items, function(item){
+				return {
+					id: item.id,
+					name: item.name
+				};
+			})
+		});
+	}
+	spliterHTML = comboHTML("device_spliter", data.spliter, data.notRelatedSpliter);
+	decoderHTML = comboHTML("device_decoder", data.decoder, data.notRelatedDecoder);
+	var SDR = null;
+	if (isEdit && data.spliter.id)
+		SDR = spliterHTML;
+	else
+		SDR = decoderHTML;
+	var items = [{
+		id: 1,
+		name: "画面分割器",
+		action : "pick.one"
+	},{
+		id: 2,
+		name: "解码器",
+		action : "pick.one"
+	}];
+	var html = t_videoEdit.renderData("", {
+		relatedMonitor: comboHTML("device_monitor", data.monitor, data.notRelatedMonitor),
+		relatedSD: getComboHTML("device_choose", {
+			value : data.spliter.id? 1: 2,
+			valueText : data.spliter.id? "画面分割器": "解码器" ,
+			items : isOCC? [items[1]]: items
+		}),
+		relatedSDR: SDR
+	});
+	function _okFn(){
+		if(!isHandle)
+			return;
+		var inputData = {};
+		inputData.monitor = $X("device_monitor").value;
+		inputData.spliter = $X("device_spliter") ? $X("device_spliter").value : "";
+		inputData.decoder = $X("device_decoder") ? $X("device_decoder").value : "";
+		if(inputData.monitor==="")
+			return nvAlert("请选择相应的监视器！");
+		else if(inputData.spliter===""&&inputData.decoder==="")
+			return nvAlert("监视器至少关联一个解码器或画面分割器！");
+		inputData.id = data.id ? data.id : "";
+		deviceCaller(isEdit ? "editVideoWall" : "addVideoWall", inputData, function(result){
+			okFn(result);
+			hideDialog();
+		});
+	}
+	showDialog({
+		clz : "video-edit",
+		title : isHandle ? (data ? "编辑电视墙" : "新增电视墙") : "查看电视墙",
+		content : html,
+		listen : {ok : _okFn}
+	});
+	if (isOCC) {
+		var $button = jQuery("#device_choose_combo");
+		$button.attr("data-toggle", "");
+		$button.find(".pic-").hide();
+	}
+	if(!isHandle){
+		jQuery(".content").find("button").each(function(){jQuery(this).attr("data-toggle", "");});
+		jQuery(".content").find(".pic-").each(function(){jQuery(this).hide();});
+		jQuery(".btn.okbtn").hide();
+	}
+}
+function _editVideo(video, okFn){
+	var isEdit = video !== null;
+	deviceCaller("getVideoWall", isEdit?{id : video.id}:{}, function(data){
+		_show(CurrentSite, okFn, data, isEdit);
+	});
+}
+/*获取电视墙显示数据*/
+function getVideoTpldata(video){
+	var c = video.spliter || video.decoder;
+	return IX.inherit(video, {
+		monitorName : video.monitor.name,
+		monitorProvider : video.monitor.provider?video.monitor.provider:"",
+		monitorStyle : video.monitor.style?video.monitor.style:"",
+		machineName : c.name || "",
+		machineProvider : TCM.Device.getDriver(c.driverId).provider+" "+TCM.Device.getDriver(c.driverId).style || "",
+		relatedName : c.type == 52 ? "画面分割器：" : "解码器："
+	});
+}
+globalActionConfig([["video.add", function(params, el){
+	_editVideo(null, function(video){
+		videoWallHT.register(video.id, video);
+		video.hasClz = "hasHover";
+		var html = t_showPlan.renderData("plans", getVideoTpldata(video));
+		jQuery(html).insertBefore(el.parentNode);
+	});
+}], ["video.edit", function(params, el){
+	var videoId = params.key;
+	var video = videoWallHT.get(videoId);
+	if (!video)
+		return;
+	_editVideo(video, function(_video){
+		videoWallHT.register(video.id, _video);
+		_video.hasClz = "hasHover";
+		var html = t_showPlan.renderData("plans", getVideoTpldata(_video));
+		el.parentNode.innerHTML = html.substring('<li class="hasHover">'.length, html.length-"</li>".length);
+	});
+}], ["video.delete", function(params, el){
+	if(!isHandle)
+		return;
+	var videoId = params.key;
+	var video = videoWallHT.get(videoId);
+	if (!video)
+		return;
+	confirmDialog("删除电视墙", "请确认是否删除此电视？",  function(cbFn){
+		deviceCaller("deleteVideoWall", {ids : [video.id]}, function(){
+			videoWallHT.remove(videoId);
+			var liEl = el.parentNode;
+			liEl.parentNode.removeChild(liEl);
+			hideDialog();
+		});
+	});
+}], ["pick.one", function(params, el){
+	var id = params.key, name = el.innerHTML;
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	inputEl.value = id;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
+	var $chooseEl = jQuery(".choose");
+	$chooseEl.next().remove();
+	if(id == "1")
+		jQuery(spliterHTML).insertAfter($chooseEl);
+	else
+		jQuery(decoderHTML).insertAfter($chooseEl);
+}]]);
+/*展示电视墙*/
+function showWall(params, isHandle){
+	deviceCaller("getVideoWalls", params, function(videos){
+		var tpldatas = IX.map(videos, function(video){
+			videoWallHT.register(video.id, video);
+			return getVideoTpldata(video);
+		});
+		jQuery("#show-plan").find(".store-plans").get(0).innerHTML = t_showPlan.renderData("", {
+			plans : isHandle ? IX.map(tpldatas, function(tpldata){
+				tpldata.hasClz = "hasHover";
+				return tpldata;
+			}) : tpldatas,
+			clz : isHandle ? "add" : "notOCC"
+		});
+	});
+}
+/*中心时候显示的电视墙tree*/
+function getOCCTreeHTML(){
+	var nodes = IX.loop(TCM.LineInfo.getSites().getAll(), [], function(acc, site, idx){
+		if(site.type !== 0 && site.type !== 4 && site.type !== 5 && site.type !== 6)
+			acc.push({name : site.name, key: site.id, nodes: []});
+		return acc;
+	});
+	var treeCfg = IX.inherit({nodes : [{name : TCM.LineInfo.getName(), nodes : nodes}]}, {
+		htmlFn : function(node){return '<span class="nodeName">'+node.name+'</span>';},
+		click : function(params, el){
+			var id = params.keys;
+			if(id == CurrentSite.id)
+				isHandle = true;
+			else
+				isHandle = false;
+			showWall({siteId : id}, isHandle);
+		}
+	});
+	return new TCM.Lib.Tree(treeCfg).getHTML();
+}
+/*电视墙加载完成后的缩放函数绑定*/
+function resizeFn(){
+	var height = jQuery("#show-plan").height();
+	jQuery("#Tree").css("height", height + "px");
+	jQuery(".nv-tree").css("height", height - 55 + "px");
+}
+/*展示电视墙页面*/
+function showVideoWall(cbFn){
+	videoWallHT.clear();
+	if(isOCC){
+		var treeHTML = getOCCTreeHTML();
+		$X('body').innerHTML = t_page.renderData("", {
+			treeName: "单位列表",
+			clz: "",
+			tree: treeHTML
+		});
+		showTreeNode();
+		jQuery("#Tree").find("span.nodeName").each(function(){
+			if(this.innerHTML == CurrentSite.name)
+				this.click();		
+		});
+		jQuery(".nv-tree a:first span:first").click();
+		resizeFn();
+		$Xw.bind({"resize": resizeFn});
+	}else{
+		isHandle = true;
+		$X('body').innerHTML = t_page.renderData("", {
+			treeName: "",
+			clz: "notOCC",
+			tree: ""
+		});
+		showWall({}, isHandle);
+	}
+	cbFn();
+}
+
+IX.ns("TCM.Device");
+TCM.Device.init = function(pageCfg, pageParams, cbFn){
+	/*页面加载时获取driver，供设备使用*/
+	if(!drivers){
+		deviceCaller("getDriver", {}, function(data){
+			drivers = data;
+			IX.iterate(data, function(item, idx){
+				var obj = {};
+				obj.id = item.id;
+				obj.provider = item.provider + "-" + item.style;
+				if(!driverHT[item.type])
+					driverHT[item.type] = [obj];
+				else
+					driverHT[item.type].push(obj);
+			});
+		});
+	}
+	CurrentSite = TCM.Env.getSession().getCurrentSite();
+	isOCC = TCM.Env.getSession().getCurrentSiteType() == 1 ? true : false;
+	switch(pageCfg.name){
+	case "device-list":
+		showDeviceList(cbFn);
+		break;
+	case "device-zone":
+		showZoneList(cbFn);
+		break;
+	case "device-video":
+		showVideoWall(cbFn);
+	}
+};
+/*公开driver供dialog页面使用*/
+TCM.Device.getDriver4Type = function(type){
+	return driverHT[type];
+};
+TCM.Device.getDriver = function(id){
+	for (var i = 0; i < drivers.length; i++) {
+		if(id == drivers[i].id)
+			return drivers[i];
+	}
+};
+</script>
