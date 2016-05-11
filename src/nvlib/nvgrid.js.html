@@ -77,14 +77,14 @@ function NVPagination(id){
 			};
 		},
 		jump : inst.jump,
-		refresh : function(totalPages, currentPageNo, itemNum, onlyData){
+		refresh : function(totalPages, currentPageNo, itemNum, onlyData, total){
 			inst.apply(currentPageNo, totalPages, onlyData);
 			tpldata.paginHTML = inst.getHTML();
-			var stx = currentPageNo * currentPageSize.value;
-			tpldata.indics = [{stx : stx, endx : stx + itemNum, pagex : itemNum}];
+			var stx = total !== 0 ? (currentPageNo * currentPageSize.value + 1) : 0;
+			tpldata.indics = [{stx : stx, endx : Math.max((stx + itemNum - 1), 0), pagex : total}];
 			var el = $X(id + "-indics");
 			if (!onlyData && el)
-				 el.innerHTML = t_pagin.renderData("indics", tpldata.indics[0]);
+				el.innerHTML = t_pagin.renderData("indics", tpldata.indics[0]);
 		}
 	};
 }
@@ -191,12 +191,13 @@ NV.Lib.Grid = function(cfg){
 	}
 	
 	var pagin =	null, tools = null, onselectRow = IX.emptyFn;
+
 	function afterLoaded(pageNo, items, onlyData){
 		grid.refresh(onlyData);
 		if (!onlyData)
 			applyHover();
 		if(pagin)
-			pagin.refresh(model.getPageCount(), pageNo, items.length, onlyData);
+			pagin.refresh(model.getPageCount(), pageNo, items.length, onlyData, model.getTotal());
 		if (tools)
 			tools.disable();
 	}
@@ -221,7 +222,7 @@ NV.Lib.Grid = function(cfg){
 		}
 	};
 	grid.cellAction = function(rowId, cellName, cellEl){
-		if (cellName == "_check"){
+		if (cellName == "_check") {
 			$XH.toggleClass($XH.first(cellEl, "checkbox"), "selected");
 			var isChoseAll = true;
 			jQuery(".ixw-grid .body").find(".checkbox").each(function(){
@@ -257,9 +258,9 @@ NV.Lib.Grid = function(cfg){
 			id : id, 
 			gridClz : $XP(cfg, "clz", ""),
 			title : $XP(cfg, "title",  ""),
-			toolHTML : tools ? tools.getHTML() :"",
+			toolHTML : tools ? tools.getHTML() : "",
 			gridHTML : grid.getHTML(),
-			paginHTML : pagin?pagin.getHTML() : ""
+			paginHTML : pagin ? pagin.getHTML() : ""
 		});
 		applyHover();
 	}

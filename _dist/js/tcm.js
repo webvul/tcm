@@ -10,7 +10,7 @@ TCM.Const.DeviceTypes = {
 	IPCFixed: 20, IPCSemiSphere: 21, IPCSphere: 22, 
 	CameraFixed: 31, CameraSemiSphere: 32, CameraSphere: 33, 
 	RedirectPickup: 40, OmnidirectPickup: 41,
-	Coder: 50, Decoder: 51, Spliter: 52, Monitor: 53, Terminal: 54, 
+	Coder: 50, Decoder: 51, Spliter: 52, Monitor: 53, Terminal: 54, SpecialDecoder: 55,
 	HUB: 60, PDH: 61, FiberConvertor: 62, KVM: 63, PDU: 64, VDM: 65,
 	Other: 90
 };
@@ -20,27 +20,16 @@ TCM.Const.DeviceTypeNames = {
 	20: "固定枪机",  21: "半球机",  22: "球机",
 	31: "固定枪机",  32: "半球机",  33: "球机",
 	40: "定向拾音器",41: "全向拾音器",
-	50: "编码器",  51: "解码器",  52: "画面分割器",53: "监视器",  54: "控制终端",
+	50: "编码器",  51: "解码器",  52: "画面分割器",53: "监视器",  54: "控制终端", 55: "解码器",
 	60: "交换机",  61: "光端机",  62: "光纤收发器",63: "数字KVM",64: "数字PDU", 65: "字符叠加器",
 	90: "其他设备"
 };
-TCM.Const.DriverId = {
-	DH_host_IPC : "1",//大华通用
-	DH_host_coder : "9",//大华通用
-	YS_host_IPC : "2",//宇视通用
-	YS_host_coder : "10",//宇视通用
-	JS_decoder : "16",//巨视通用
-	AXS_rtsp_IPC : "5",//安讯视rstp
-	AXS_rtsp_coder : "13",//安讯视rstp
-	DH_rtsp_IPC : "6",//大华rstp
-	DH_rtsp_coder : "14",//大华rstp
-	YS_rtsp_IPC : "7",//宇视rstp
-	YS_rtsp_coder : "15",//宇视rstp
-	NKF_rtsp_IPC : "8",//NKF rstp
-	NKF_rtsp_coder : "19",//NKF rstp
-	AVS_IPC : "3",//安维斯通用
-	AVS_coder : "11"//安维斯通用
-};
+TCM.Const.DriverList = [
+	{name: "DahuaMulticastHost", provider: "大华", style: "通用", username: "admin", password: "admin", port: "37777"},
+	{name: "rtsphost", provider: "东方网力测试", style: "RTSP", username: "admin", password: "admin", port: "554"},
+	{name: "multitesthost", provider: "东方网力测试", style: "组播", username: "admin", password: "admin", port: "3077"},
+	{name: "netposamultidechost", provider: "东方网力", style: "890", username: "admin", password: "admin", port: "4601"}
+];
 
 TCM.Const.Days = "周日,周一,周二,周三,周四,周五,周六".split(",");
 
@@ -188,6 +177,8 @@ TCM.DeviceType.getNodeName = function(type){
 		return "coder";
 	case TCM.Const.DeviceTypes.Decoder:
 		return "decoder";
+	case TCM.Const.DeviceTypes.SpecialDecoder:
+		return "specialDecoder";
 	case TCM.Const.DeviceTypes.Spliter:
 		return "spliter";
 	case TCM.Const.DeviceTypes.Monitor:
@@ -205,6 +196,39 @@ TCM.DeviceType.getNodeName = function(type){
 		return "other";
 	}
 };
+})();
+(function(){
+IX.ns("TCM.Util");
+
+var CommonQueryInterval = 5000; // 5 seconds
+TCM.Util.PeriodicChecker = function(condFn, checkFn, interval){
+	var isStarted = false;
+	var intv = interval || CommonQueryInterval;
+	var timers = null;
+	function _query(){
+		if (IX.isFn(condFn) && !condFn()){
+			isStarted = false;
+			return;
+		}
+		timers = function(){
+			return setTimeout(function(){
+				if(isStarted) _query();
+			}, intv);
+		};
+		checkFn(isStarted, timers);
+	}
+	return {
+		start : function(){
+			if (!isStarted) _query();
+			isStarted = true;
+		},
+		stop : function(){
+			isStarted = false;
+			clearTimeout(timers);
+		}
+	};
+};
+
 })();
 (function(){
 
@@ -322,6 +346,7 @@ IXW.Lib.GridModel = function(id, cfg){
 		addItems : dataModel.addItems,
 		removeItems : dataModel.removeItems,
 
+		getTotal : function(){return dataModel.getTotal();},
 		getTpldata : function(){return tpldata;},
 		getPageCount : function(){return Math.ceil(dataModel.getTotal()/pageSize);},	
 		resetPage : function(_pageNo, _pageSize, cbFn){
@@ -403,23 +428,29 @@ globalActionConfig([["nvdialog-click",function(params,el){
 }]]);
 function dialogBodyRefresh(bodyEl){
 	bodyEl.className = "ixw-body nv-dialog " + $XP(dialogCfg, "clz", "");
+	// console.log("inner-start: " + new Date().getTime());
 	bodyEl.innerHTML = t_modal.renderData("", {
 		title : $XP(dialogCfg, "title", ""),
 		content : $XP(dialogCfg, "content", ""),
 		lbtns : $XP(dialogCfg, "btns.left", CommonBtns.left),
 		rbtns : $XP(dialogCfg, "btns.right", CommonBtns.right)
 	});
+	// console.log("inner-end: " + new Date().getTime());
 	$XF(dialogCfg, "afterShow")(bodyEl);
 }
 
 function showDialog(cfg){
 	dialogCfg = cfg;
+	if (jQuery(".confirmLogin").length !== 0)
+		return;
 	if (!dialog)
 		dialog = new IXW.Lib.ModalDialog({
 			id : "nv-dialog",
 			bodyRefresh : dialogBodyRefresh
 		});
+	// console.log("show: "+ new Date().getTime());
 	dialog.show();
+	// console.log("show-look: "+ new Date().getTime());
 }
 
 function _alert(content){
@@ -454,11 +485,14 @@ NV.Dialog.confirm = function(title, msg, okFn){ showDialog({
 	listen : { ok : function(){okFn(hideDialog);} }
 });};
 
-NV.Dialog.confirm4login = function(title, msg, btns, okFn){ showDialog({
-	title : IX.encodeTXT(title),
-	btns : btns,
-	content : t_confirm.renderData("", {msg: msg}),
-	listen : { ok : function(){okFn(hideDialog);} }
+NV.Dialog.confirm4login = function(title, msg, btns, okFn){ 
+	showDialog({
+		title : IX.encodeTXT(title),
+		clz: "confirmLogin",
+		btns : btns,
+		content : t_confirm.renderData("", {msg: msg}),
+		listen : { ok : function(){okFn(hideDialog);} 
+	}
 });};
 
 NV.Dialog.alert = _alert;
@@ -474,7 +508,6 @@ NV.Lib.confirm = _confirm;
 })();
 (function () {
 var globalActionConfig = IXW.Actions.configActions;
-var driverId = TCM.Const.DriverId;
 
 var t_leafItem = new IX.ITemplate({tpl: [
 '<div class="leaf {clz}">',
@@ -519,46 +552,6 @@ var t_checkbox = new IX.ITemplate({tpl: [
 
 globalActionConfig([["nvcombo.pick", function(params,el){
 	var id = params.key, name = el.innerHTML;
-	// driver关联设备类型为20,21,22,50的用户名与密码端口号
-	if(jQuery(".IPC-edit").length > 0 || jQuery(".coder-edit").length > 0){
-		switch(id){
-			case driverId.DH_host_IPC :
-			case driverId.DH_host_coder :
-				setParams("admin", "admin", "37777");
-				break;
-			case driverId.YS_host_IPC :
-			case driverId.YS_host_coder :
-				setParams("admin", "admin", "0");
-				break;
-			case driverId.AXS_rtsp_IPC :
-			case driverId.AXS_rtsp_coder :
-				setParams("root", "pass", "554");
-				break;
-			case driverId.DH_rtsp_IPC :
-			case driverId.DH_rtsp_coder :
-			case driverId.YS_rtsp_IPC :
-			case driverId.YS_rtsp_coder :
-				setParams("admin", "admin", "554");
-				break;
-			case driverId.AVS_IPC :
-			case driverId.AVS_coder :
-				setParams("admin", "admin", "4060");
-				break;
-			case driverId.NKF_rtsp_IPC :
-			case driverId.NKF_rtsp_coder :
-				setParams("admin", "", "554");
-				break;
-			default :
-				setParams("admin", "admin", "");
-				break;
-		}
-	}
-	if (jQuery(".decoder-edit").length > 0) {
-		if (id == driverId.JS_decoder) {
-			setParams("admin", "admin", "6000");
-		}
-	}
-	// 关联结束
 	var dropdownEl = $XH.ancestor(el, "dropdown");
 	if (!dropdownEl) return;
 	var inputEl = $XD.first(dropdownEl, "input");
@@ -584,12 +577,6 @@ globalActionConfig([["nvcombo.pick", function(params,el){
 	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
 	nameEl.innerHTML = name;
 }]]);
-function setParams(name, pass, port){
-	jQuery("#device_username").attr("value",name);
-	jQuery("#device_password").attr("value",pass);
-	jQuery("#device_port").attr("value",port);
-}
-
 function getComboHTML(id, cfg, action){return t_combo.renderData("", IX.inherit({
 	valueId : id,
 	comboId : id + "_combo"
@@ -818,14 +805,14 @@ function NVPagination(id){
 			};
 		},
 		jump : inst.jump,
-		refresh : function(totalPages, currentPageNo, itemNum, onlyData){
+		refresh : function(totalPages, currentPageNo, itemNum, onlyData, total){
 			inst.apply(currentPageNo, totalPages, onlyData);
 			tpldata.paginHTML = inst.getHTML();
-			var stx = currentPageNo * currentPageSize.value;
-			tpldata.indics = [{stx : stx, endx : stx + itemNum, pagex : itemNum}];
+			var stx = total !== 0 ? (currentPageNo * currentPageSize.value + 1) : 0;
+			tpldata.indics = [{stx : stx, endx : Math.max((stx + itemNum - 1), 0), pagex : total}];
 			var el = $X(id + "-indics");
 			if (!onlyData && el)
-				 el.innerHTML = t_pagin.renderData("indics", tpldata.indics[0]);
+				el.innerHTML = t_pagin.renderData("indics", tpldata.indics[0]);
 		}
 	};
 }
@@ -932,12 +919,13 @@ NV.Lib.Grid = function(cfg){
 	}
 	
 	var pagin =	null, tools = null, onselectRow = IX.emptyFn;
+
 	function afterLoaded(pageNo, items, onlyData){
 		grid.refresh(onlyData);
 		if (!onlyData)
 			applyHover();
 		if(pagin)
-			pagin.refresh(model.getPageCount(), pageNo, items.length, onlyData);
+			pagin.refresh(model.getPageCount(), pageNo, items.length, onlyData, model.getTotal());
 		if (tools)
 			tools.disable();
 	}
@@ -962,7 +950,7 @@ NV.Lib.Grid = function(cfg){
 		}
 	};
 	grid.cellAction = function(rowId, cellName, cellEl){
-		if (cellName == "_check"){
+		if (cellName == "_check") {
 			$XH.toggleClass($XH.first(cellEl, "checkbox"), "selected");
 			var isChoseAll = true;
 			jQuery(".ixw-grid .body").find(".checkbox").each(function(){
@@ -998,9 +986,9 @@ NV.Lib.Grid = function(cfg){
 			id : id, 
 			gridClz : $XP(cfg, "clz", ""),
 			title : $XP(cfg, "title",  ""),
-			toolHTML : tools ? tools.getHTML() :"",
+			toolHTML : tools ? tools.getHTML() : "",
 			gridHTML : grid.getHTML(),
-			paginHTML : pagin?pagin.getHTML() : ""
+			paginHTML : pagin ? pagin.getHTML() : ""
 		});
 		applyHover();
 	}
@@ -1081,7 +1069,7 @@ function getHtml4RoleInLevel(item,typeName){
 	return roleCell4LevelTpl.renderData("", {
 		name : lineInfo.getRoleName(r.id) || "预留",
 		type : lineInfo.getSiteTypeNameOfRole(r.id),
-		prompt: r.prompted ? "需要启动临时授权" :""
+		prompt: r.prompted ? "允许临时权限提升" :""
 	});
 }
 function getRoleColumnModel(typeName){return {
@@ -1129,15 +1117,15 @@ IX.iterate([
 ["station", function(){return getRoleColumnModel("station");}],
 ["depot", function(){return getRoleColumnModel("depot");}],
 
-["userName", {name : "name", title: "用户名称"}],
-["account", "登录名称"],
+["userName", {name : "name", title: "用户名"}],
+["account", "登录账号"],
 ["utype", function(){return getCommonColumnModel("type", "用户类型", function(item){
 	return UserTypes[item.type] || "";
 }, true);}],
 ["userSite", function(){return getCommonColumnModel("site", "所属单位", function(item){
 	return lineInfo.getSiteName(item.siteId);
 }, true);}],
-["userRole", function(){return getCommonColumnModel("role", "角色名称", function(item){
+["userRole", function(){return getCommonColumnModel("role", "用户角色", function(item){
 	return lineInfo.getRoleName(item.role);
 }, true);}],
 
@@ -1175,7 +1163,7 @@ IX.iterate([
 ["devChannelNum", function(){return getCommonColumnModel("channelNum", "通道数", function(item){
 	return IX.encodeTXT($XP(item, "channelNum", ""));
 });}], 
-["devVersion", function(){return getCommonColumnModel("version", "软件版本", function(item){
+["devVersion", function(){return getCommonColumnModel("version", "软件版本号", function(item){
 	return IX.encodeTXT($XP(item, "version", ""));
 },true);}],
 ["devbcPort", function(){return getCommonColumnModel("bcPort", "组播流端口", function(item){
@@ -1184,7 +1172,7 @@ IX.iterate([
 ["devdiskNum", function(){return getCommonColumnModel("diskNum", "硬盘数量", function(item){
 	return IX.encodeTXT($XP(item, "diskNum", ""));
 });}],
-["devCapacity", function(){return getCommonColumnModel("capacity", "存储总容量", function(item){
+["devCapacity", function(){return getCommonColumnModel("capacity", "总容量", function(item){
 	return IX.encodeTXT($XP(item, "capacity", ""))+"GB";
 });}],
 ["devPath", function(){return getCommonColumnModel("path", "对应的软件名称或网页地址", function(item){
@@ -1949,14 +1937,14 @@ var nvAlert = NV.Dialog.alert;
 
 var t_leafItem4Map = new IX.ITemplate({tpl: [
 '<div class="c{type} {chkClz}" data-key="{id}" data-type="{type}">',
-	'<div class="name">{name}</div>',
+	'<div class="name" title="{name}">{name}</div>',
 	'<a class="delete" data-href="$delete.cameraXY" data-key="{id}"></a>',
 '</div> ',
 '']});
 var t_nodeItem4Map = new IX.ITemplate({tpl: [
 '<div class="leaf {clz}">',
 	'<span class="text">{name}</span>',
-	'<a class="nv-collapse {expClz}" data-href="$camera.expand">',
+	'<a class="nv-collapse {expClz}" data-href="$mapCamera.expand">',
 		'<span class="pic-"></span></a>',
 '</div>',
 '']});
@@ -2108,6 +2096,20 @@ globalActionConfig([["delete.cameraXY", function(params, el){
 	view.zoom(1);
 }],["img.shrink", function(params, el){
 	view.zoom(0);
+}],["mapCamera.expand", function(params, el){
+	$XH.toggleClass(el, "expanded");
+	$XH.toggleClass(el.parentNode, "expanded");
+	var ee=$XH.ancestor(jQuery(el.parentNode).siblings(".type").get(0),"expanded");
+	if(ee){
+		$XH.toggleClass(ee, "expanded");
+		$XH.toggleClass($XH.first(ee, "nv-collapse"), "expanded");
+	}
+	var ex=$XH.ancestor(jQuery(el.parentNode).siblings(".type").get(1),"expanded");
+	if(ex){
+		$XH.toggleClass(ex, "expanded");
+		$XH.toggleClass($XH.first(ex, "nv-collapse"), "expanded");
+	}
+	jQuery(".suspend").css("top", Math.min(parseInt(jQuery(".suspend").css("top")), parseInt(jQuery("#imgFrame").css("height")) - 172) + "px");
 }]]);
 /*
 	data: {
@@ -2198,8 +2200,13 @@ function viewData4Show(viewData, mapEl){
 		});
 	}
 	function zoom(status){
-		if(!$X("image").src)
+		if (!$X("image").src)
 			return;
+		if (jQuery('#imgFrame').width() > viewData.width || jQuery('#imgFrame').height() > viewData.height){
+			mapEl.width = viewData.width;
+			mapEl.height = viewData.height;
+			return; 
+		}
 		var w, h;
 		if(status === 1){
 			w = Math.min(widthMap * 1.2, widthMax);
@@ -2216,8 +2223,10 @@ function viewData4Show(viewData, mapEl){
 			isSmall = false;
 	    centerX = Math.min(Math.max(centerX * w / widthMap, widthFrame/2), widthMap - widthFrame/2);
 	    centerY = Math.min(Math.max(centerY * h / heightMap, heightFrame/2), heightMap - heightFrame/2);
-	    widthMap = mapEl.width = w;
-	    heightMap = mapEl.height = h;
+	    widthMap = w;
+	    heightMap = h;
+	    mapEl.width = w;
+	    mapEl.height = h;
 	    setPosition();
 	}
 	function scrollIt(event){
@@ -2242,8 +2251,8 @@ function viewData4Show(viewData, mapEl){
 		centerX = widthFrame/2;
 		centerY = heightFrame/2;
 		IX.iterate(_data.cameras, function(camera, idx){
-			var minWidth = Math.min(_data.width - 40, camera.x);
-			var minHeight = Math.min(_data.height - 40, camera.y);
+			var minWidth = Math.min(_data.width, camera.x);
+			var minHeight = Math.min(_data.height, camera.y);
 			positionHT[camera.id] = {top: minHeight, left: minWidth, multipleX: minWidth / widthMax, multipleY: minHeight / heightMax};
 		});
 		setPosition();
@@ -2261,8 +2270,8 @@ function viewData4Show(viewData, mapEl){
 		},
 		refresh: function(newData){
 			mapData.resetData(newData);
+			viewData = newData;
 			_initData();
-			setPosition();
 		},
 		scrollIt: scrollIt,
 		zoom: zoom,
@@ -2325,9 +2334,15 @@ function bindCamera4Drag(){
 	var offsetX, offsetY;
 	jQuery(".lost").draggable({
 		helper: "clone",
+		cancel: ".name",
 		start: function(event, ui){
-			offsetX = event.offsetX;
-			offsetY = event.offsetY;
+			if ($XH.hasClass(event.toElement, "name")){
+				offsetX = event.offsetX + 32;
+				offsetY = event.offsetY + 6;
+			}else{
+				offsetX = event.offsetX;
+				offsetY = event.offsetY;
+			}
 			jQuery(".suspend").css({visibility: "hidden"});
 			ui.helper.css("visibility", "visible");
 		},
@@ -2339,7 +2354,7 @@ function bindCamera4Drag(){
 				.addClass('cameraOne')
 				.appendTo(".fix")
 				.attr({"style": 
-					"top:"+Math.min(Math.max(0, event.pageY - el.top - offsetY), el.height-34)+"px; left:"+Math.min(Math.max(0, event.pageX - el.left - offsetX), el.width-34)+"px;"
+					"top:"+Math.min(Math.max(0, event.pageY - el.top - offsetY + 14), el.height-30)+"px; left:"+Math.min(Math.max(0, event.pageX - el.left - offsetX + 14), el.width-30)+"px;"
 				});
 			$this.draggable("destroy");
 			if($parent.find(".lost").length === 1){
@@ -2371,6 +2386,10 @@ function showTigger(params){
 				var el = $XH.ancestor(e.target, "type");
 				jQuery(el).siblings(".type").removeClass("expanded");
 				$XH.toggleClass(el, "expanded");
+				jQuery(".suspend").css("top", Math.min(parseInt(jQuery(".suspend").css("top")), parseInt(jQuery("#imgFrame").css("height")) - 172) + "px");
+			},
+			mousedown : function(e){
+				e.cancelBubble = true;
 			}
 		});
 		bindCamera4Drag();
@@ -2472,7 +2491,7 @@ function Map(container, params, isOCC){
 			deviceCaller("getMap", params, function(data){
 				if(!data.url){
 					if(isOCC){
-						jQuery(".nvgrid-body").html("");
+						jQuery(".nvgrid-body").html("").css("height", jQuery("#Tree").height());
 						return nvAlert("该分区暂未上传地图！");
 					}else
 						nvAlert("地图不存在，请上传地图！");
@@ -2507,9 +2526,13 @@ TCM.Lib.Map = function(container, params, isOCC){
 
 var ixwPages = IXW.Pages;
 IXW.Actions.configActions([["login", function(){
+	var account = $X('account').value;
+	var password = $X('password').value;
+	if (!(account.isWindowsDirectory() && password.isWindowsDirectory()))
+		return NV.Dialog.alert("账号密码中请勿包含\\/^:*><|@?\"特殊字符！");
 	TCM.Global.entryCaller("login", {
-		username : $X('account').value,
-		password : $X('password').value
+		username : account,
+		password : password
 	}, function(data){
 		TCM.Env.resetSession(data);
 		ixwPages.load("");
@@ -2551,13 +2574,16 @@ TCM.Entry.init = function(pageCfg, pageParams, cbFn){
 		}
 	});
 	var aEl = $X("submit");
+	$X('account').focus();
 	jQuery('#account').bind("keydown", function(e){
 		if ( e.which == 13)
 			$X('password').focus();
 	});	
-	jQuery(".container").keydown(function(event){
+	jQuery("#password").keydown(function(event){
 		if(event.keyCode == 13){
 			aEl.click();
+			$X('account').blur();
+			$X('password').blur();
 		}
 	});
 
@@ -2607,8 +2633,8 @@ function _deleteUnits(rowModels, cfg, okFn){
 		});
 	});
 }
-function checkChinese(s){
-	var re = /[^\u4E00-\u9FA5]+/g; 
+function checkPassWord(s){
+	var re = /^[0-9_a-zA-Z]{1,20}$/; 
 	return re.test(s);
 }
 function verifyForm(value, msg, name){
@@ -2620,9 +2646,9 @@ function verifyForm(value, msg, name){
 		}
 	}
 	if(name == "password" && value !== ""){
-		var value1 = checkChinese(value);
+		var value1 = checkPassWord(value);
 		if (!value1){
-			nvAlert("密码不允许出现汉字！");
+			nvAlert("密码只允许数字、字母和下划线，且最长为20位！");
 			return false;
 		}
 	}
@@ -2682,6 +2708,13 @@ function _editUnit(rowModel, cfg, okFn){
 			var result = checkSiteName(info.name);
 			if(!result)
 				{return false;}
+		}
+		if(info.account && !info.account.isWindowsDirectory()){
+			return nvAlert(IX.encodeTXT("登录账号中请勿包含\\/^:*><|@?\"特殊字符！"));
+		}
+		if(info.name){
+			if (cfg.clz != "sys-editSite" && !info.name.isWindowsDirectory())
+			return nvAlert(IX.encodeTXT("名称中请勿包含\\/^:*><|@?\"特殊字符！"));
 		}
 		var checkFn = $XP(cfg, "checkInfo");
 		if (!info || (IX.isFn(checkFn) && !checkFn(info))) return;
@@ -2866,13 +2899,13 @@ var LevelDialogCfg = {
 		data.stationPromptedCheckbox = getCheckboxHTML(
 			"station_prompted", 
 			!!data.station_prompted,
-			"需要启动临时授权"
+			"允许临时权限提升"
 		);
 		data.depotRoleCombo = getRoleComboHTML("depot_role", data.depot_role, true);
 		data.depotPromptedCheckbox = getCheckboxHTML(
 			"depot_prompted", 
 			!!data.depot_prompted,
-			"需要启动临时授权"
+			"允许临时权限提升"
 		);
 		return data;
 	},
@@ -2894,7 +2927,7 @@ var t_editUser = new IX.ITemplate({tpl: [
 '<ul class="{clz}">',
 	'<li><span class="label">所属单位</span>',
 		'<input type="hidden" id="user_site" value="{user_site}"><span>{siteName}</span></li>',
-	'<li><span class="label">分类</span>{userTypeCombo}</li>',
+	'<li><span class="label">用户类型</span>{userTypeCombo}</li>',
 	'<li><span class="label">用户名</span>',
 		'<span><input id="user_name" maxlength="32" value="{user_name}"></span></li>',
 	'<li><span class="label">登录账号</span>',
@@ -2974,7 +3007,10 @@ var UserDialogCfg = {
 		data.user_desc = data.user_desc || "";
 		data.user_site = data.user_site || TCM.Env.getSession().getCurrentSiteId();
 		data.siteName = TCM.LineInfo.getSiteName(data.user_site);
-		data.userTypeCombo = isSuper ? getRootUserComboHTML("user_type", data.user_type) : getUserTypeComboHTML("user_type", data.user_type);
+		if (rowModel)
+			data.userTypeCombo = '<span><input disabled id="user_type" maxlength="32" value="'+UserTypeNames[data.user_type]+'"></span>';
+		else
+			data.userTypeCombo = isSuper ? getRootUserComboHTML("user_type", data.user_type) : getUserTypeComboHTML("user_type", data.user_type);
 		data.clz = isSuper?"isAdmin":(data.user_type == 1 ? "isAdmin" : "isUser");
 		data.roleCombo = getRoleComboHTML("user_role",  data.user_role, false);
 		return data;
@@ -3319,7 +3355,18 @@ function showSysRole(cbFn){
 function showSysLevel(cbFn){
 	var grid = null; 
 	grid = createSysGrid(IX.inherit(GridCfgs.level, {
-		actions : [["edit", "编辑", function(rowModel, rowEl){
+		actions : [["reset", "重置", function(rowModel, rowEl){
+			if (jQuery(rowEl).find(".col-role-name").html() == "预留") 
+				return NV.Dialog.alert("此级别已为预留位，无需重置！");
+			if (IX.Array.isFound(rowModel.getId(), [1,2,3,4,5,6,7,8,9,10,11,12]))
+				return NV.Dialog.alert("系统预置优先级不能重置！");
+			NV.Dialog.confirm("提示", "是否重置此级别优先级？", function(hideDialog){
+				sysCaller("resetLevel", {id: rowModel.getId()}, function(data){
+					hideDialog();
+					grid.refresh();
+				});
+			});
+		}],["edit", "编辑", function(rowModel, rowEl){
 			sysDialog.editLevel(rowModel, function(){
 				grid.refresh();
 			});
@@ -3367,7 +3414,7 @@ function showUsers(cbFn){
 
 var t_config = new IX.ITemplate({tpl: [
 '<div class="nv-box sys-config">',
-	'<div class="nv-title">系统配置</div>',
+	'<div class="nv-title">系统设置</div>',
 	'<div class="nv-body">',
 		'<div class="area">',
 			'<h3>数据配置同步设置</h3>',
@@ -3392,15 +3439,15 @@ var t_config = new IX.ITemplate({tpl: [
 			'<div class="area">',
 				'<h3>系统校时设置</h3>',
 				'<div class="item sum">',
-					'<h6>校时方式选择</h6>',
-					'<div>',
+					'<h6 class="display">校时方式选择</h6>',
+					'<div class="display">',
 						'<a data-href="$sys.checkRS422" class="nv-radio rs422 {rs422Clz}">',
 							'<span class="ixpic- {radioSite}"></span><span>启用RS－422方式</span>',
 						'</a>',
 					'</div>',
 					'<div>',
 						'<a data-href="$sys.checkNTP" class="nv-radio ntp {ntpClz}">',
-							'<span class="ixpic- {radioSite}"></span><span>启用NTP服务器</span>',
+							'<span style="display: none" class="ixpic- {radioSite}"></span><span>NTP服务器</span>',
 						'</a>',
 						'<span><input id="ntp-ip" value="{ntpIP}" {hostAttr}/></span>',
 						'<span>端口</span>',
@@ -3495,9 +3542,9 @@ function getTpldata4Config(){
 		scheduleTime : JSON.parse($XP(sysConfigData,"TimingSetting")).schedule||"01:00:00",
 		rs422Clz : getCheckedClz("TimingSetting","useRS422"),
 		ntpClz : getCheckedClz("TimingSetting","useNTP"),
-		ntpIP :  JSON.parse($XP(sysConfigData, "TimingSetting")).ntpIP,
+		ntpIP :  JSON.parse($XP(sysConfigData, "TimingSetting")).ntpIP || "",
 		hostAttr : enableNTP? "": "disabled",
-		ntpPort :  JSON.parse($XP(sysConfigData,"TimingSetting")).ntpPort,
+		ntpPort :  JSON.parse($XP(sysConfigData,"TimingSetting")).ntpPort || 123,
 		portAttr : enableNTP? "": "disabled",
 		tvsClz : getCheckedClz("ServerBackupSetting","backupTVS"),
 		ssClz : getCheckedClz("ServerBackupSetting","backupSS"),
@@ -3770,7 +3817,7 @@ var getComboHTML = NV.Lib.getComboHTML;
 var cameraTree = TCM.Lib.CameraTree;
 var getCheckboxHTML = NV.Lib.getCheckboxHTML;
 var getNodeName = TCM.DeviceType.getNodeName;
-var driverId = TCM.Const.DriverId;
+var DriverList = TCM.Const.DriverList;
 
 
 var t_deleteMsg = new IX.ITemplate({tpl: [
@@ -3846,7 +3893,7 @@ var t_editSpliter = new IX.ITemplate({tpl: [
 	'<li class="spliters"><span class="labelOne">备注</span>',
 		'<span><input maxlength="150" id="device_desc" value="{device_desc}" tabindex="2"></span></li>',
 	'<li class="spliters"><span class="labelOne">数据位</span>{dataBitCombo}</li>','<tpl id="relatedDecoders">',
-		'<li class="spliters loopDecoder"><span class="labelOne">通道{i}关联解码器</span>{relatedDecoders}</li>',
+		'<li class="spliters loopDecoder"><span class="labelOne">通道{i}关联解码器</span>{relatedDecoders}',
 	'</tpl>',
 	'<input id="device_type" value="{device_type}" style="display: none;">',
 '</ul>',
@@ -3918,6 +3965,29 @@ var t_editDecoder = new IX.ITemplate({tpl: [
 	'<li><span class="label">厂家及型号</span>{driverCombo}',
 		'<span class="label labelTwo">备注</span>',
 		'<span><input maxlength="150" id="device_desc" value="{device_desc}" tabindex="7"></span></li>',
+		'<input id="device_type" value="{device_type}" style="display: none;">',
+'</ul>',
+'']});
+
+var t_editSpecialDecoder = new IX.ITemplate({tpl: [
+'<ul class="{clz}">',
+	'<li><span class="label">设备名称</span>',
+		'<span><input maxlength="64" id="device_name" value="{device_name}" tabindex="1"></span>',
+		'<span class="label labelTwo">用户名</span>',
+		'<span><input maxlength="15" id="device_username" value="{device_username}" tabindex="4"></span></li>',
+	'<li><span class="label">IP地址</span>',
+		'<span><input maxlength="15" id="device_ip" value="{device_ip}" tabindex="2"></span>',
+		'<span class="label labelTwo">密码</span>',
+		'<span><input maxlength="15" id="device_password" value="{device_password}" tabindex="5"></span></li>',
+	'<li><span class="label">端口号</span>',
+		'<span><input maxlength="5" id="device_port" value="{device_port}" tabindex="3"></span>',
+		'<span class="label labelTwo">通道数</span>',
+		'<span><input maxlength="4" id="device_channelNum" value="{device_channelNum}" tabindex="6"></span></li>',
+	'<li><span class="label">厂家及型号</span>{driverCombo}',
+		'<span class="label labelTwo">最大画面数</span>',
+		'<span><input maxlength="4" id="device_maxWindow" value="{device_maxWindow}" tabindex="7"></span></li>',
+	'<li><span class="label">备注</span>',
+		'<span><input maxlength="150" id="device_desc" value="{device_desc}" tabindex="8"></span></li>',
 		'<input id="device_type" value="{device_type}" style="display: none;">',
 '</ul>',
 '']});
@@ -4034,11 +4104,10 @@ function checkIfIP(s){
 	return s.isIP();
 }
 function checkName(s){
-	var re = RegExp(/[\/]+/); 
-	return !re.test(s);
+	return s.isWindowsDirectory();
 }
 var DataAreaCheckers = {
-	"name" : {fn: checkName, text: "设备名称中不允许出现特殊字符/"},
+	"name" : {fn: checkName, text: "设备名称中请勿包含\\/^:*><|@?\"特殊字符！"},
 	"ip" : {fn: checkIfIP, text: "请输入正确的IP地址，例如：192.168.0.1"},
 	"dataIp" : {fn: checkIfIP, text: "请输入正确的IP地址，例如：192.168.0.1"},
 	"manageIp" : {fn: checkIfIP, text: "请输入正确的IP地址，例如：192.168.0.1"},
@@ -4047,6 +4116,7 @@ var DataAreaCheckers = {
 	"channelNum" : {fn: checkIfInt, text: "通道数须为大于0的整数！"},
 	"capacity" : {fn: checkIfNum, text: "总容量须为大于0的数字！"},
 	"diskNum" : {fn: checkIfInt, text: "磁盘数量须为大于0的整数！"},
+	"maxWindow" : {fn: checkIfInt, text: "画面数必须为大于0的整数！"},
 	"port" : {fn: checkIfPort, text: "请输入正确的端口号，端口号范围：0~65535"}
 };
 function verifyValue(name, value){
@@ -4122,8 +4192,8 @@ function gatherBc(channelNum){
 	for (var k = 0; k < channelNum; k++) {
 		var addr = $X("device_bcAddr"+(k+1)).value;
 		var port = $X("device_bcPort"+(k+1)).value;
-		if (!addr.isIP()) {
-			nvAlert("通道"+(k+1)+"的IP格式错误！");
+		if (!checkIfBc(addr)) {
+			nvAlert("通道"+(k+1)+"的组播流地址，范围：224.0.0.0~239.255.255.255");
 			return false;
 		}
 		if (!checkIfPort(port)) {
@@ -4161,8 +4231,9 @@ function gatherInfo(rowModel, checkers, types){
 	if (data.type == deviceType.Coder) {
 		data.channelNum = data.channelNum - 0;
 		var bc = gatherBc(data.channelNum);
-		ifChanged = JSON.stringify(bc) !== JSON.stringify(rowModel.get("bc"));
 		if (!bc) return;
+		if (rowModel)
+			ifChanged = ifChanged || (JSON.stringify(bc) !== JSON.stringify(rowModel.get("bc")));
 		data.bc = JSON.stringify(bc);
 	}
 	if (!ifChanged) {
@@ -4225,6 +4296,7 @@ function _editUnit(rowModel, cfg, okFn, types, siteId){
 		return nvAlert("该设备类型未定义驱动,无法执行相关操作！");
 	if (!contentData && IX.Array.isFound(types[0], CameraTypes))
 		return nvAlert("请添加编码器后，再添加模拟摄像机！");
+	// console.log("show-cfg "+ new Date().getTime());
 	showDialog({
 		clz : cfg.clz,
 		title : cfg.title,
@@ -4331,10 +4403,11 @@ function getDriverHTML(id, type, driverId){
 		valueText: driverId ? provider : result[0].provider,
 		items: IX.map(result, function(item, idx){
 			return IX.inherit(item, {
-				name: item.provider
+				name: item.provider,
+				action: "driver.pick"
 			});
 		})
-	});
+	}, "driver.pick");
 }
 
 function getZoneComboHTML(id, zoneId, zones){
@@ -4356,7 +4429,9 @@ function getAllNotRelated(type, cbFn){
 			cbFn(data);
 		});
 	} else if (IX.Array.isFound(type, [deviceType.RedirectPickup, deviceType.OmnidirectPickup, deviceType.VDM])) {
+		// console.log("send :" + new Date().getTime());
 		return deviceCaller("getAllNotRelatedCameras", {type: type}, function(data){
+			// console.log("back :" + new Date().getTime());
 			cbFn(data);
 		});
 	} else if (IX.Array.isFound(type, IPCTypes)) {
@@ -4397,6 +4472,12 @@ function refreshLoopDecoder(){
 			return acc;
 		}));
 	});
+}
+//更改driver时更改设备参数默认值
+function setParams(name, pass, port){
+	jQuery("#device_username").val(name);
+	jQuery("#device_password").val(pass);
+	jQuery("#device_port").val(port);
 }
 
 globalActionConfig([["pick.coder", function(params, el){//模拟摄像机关联编码器选择
@@ -4530,6 +4611,24 @@ globalActionConfig([["pick.coder", function(params, el){//模拟摄像机关联�
 	baseChangeCombo(type, name, el);
 	var ulEl = $XD.ancestor($XH.ancestor(el, "dropdown"), "ul");
 	ulEl.className = type == 64 ? "PDU-edit" : "edit";
+}],["driver.pick", function(params, el){
+	var id = params.key, name = el.innerHTML;
+	// driver关联设备类型为20,21,22,50的用户名与密码端口号
+	if(jQuery(".IPC-edit").length > 0 || jQuery(".coder-edit").length > 0 || jQuery(".decoder-edit").length > 0){
+		var getDriverFn = TCM.Device.getDriver;
+		for (var i = 0; i < DriverList.length; i++) {
+			var driver = getDriverFn(id);
+			if (driver.name == DriverList[i].name && driver.provider == DriverList[i].provider && driver.style == DriverList[i].style)
+				setParams(DriverList[i].username, DriverList[i].password, DriverList[i].port);
+		}
+	}
+	// 关联结束
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	inputEl.value = id;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
 }]]);
 
 var notRelatedDecoders = [];
@@ -4639,6 +4738,14 @@ var DeviceDialogCfg = {
 		tpl : t_editDecoder,
 		checkers : getCheckers([ChooseChecker[4], ChooseChecker[0], ChooseChecker[1], ChooseChecker[5], ChooseChecker[6],
 			{name : "channelNum", key: "device_channelNum", empty : "设备通道数"}
+		])
+	},
+	specialDecoder: {
+		clz : "decoder-edit",
+		tpl : t_editSpecialDecoder,
+		checkers : getCheckers([ChooseChecker[4], ChooseChecker[0], ChooseChecker[1], ChooseChecker[5], ChooseChecker[6],
+			{name : "channelNum", key: "device_channelNum", empty : "设备通道数"},
+			{name : "maxWindow", key : "device_maxWindow", empty : "通道最大画面数"}
 		])
 	},
 	monitor: {
@@ -4797,7 +4904,7 @@ function getTplData(rowModel, data, types, result){
 	}	
 	data.cameraId = '<input type="hidden" id="device_id" value="'+data.device_id+'">';
 	data.clz = theType == 64 ? "PDU-edit" : "edit";
-	if (IX.Array.isFound(theType, [10, 50, 51, 52, 65]))
+	if (IX.Array.isFound(theType, [10, 50, 51, 52, 55, 65]))
 		data.driverCombo = getDriverHTML("device_driverId", theType, data.device_driverId);
 	if (IX.Array.isFound(theType, [20, 21, 22]))
 		data.driverCombo = getDriverHTML("device_driverId", 202122, data.device_driverId);
@@ -4822,6 +4929,7 @@ TCM.DeviceDialog.editDevice = function(rowModel, okFn, siteId){
 
 TCM.DeviceDialog.createDevice = function(types, okFn, siteId){
 	var key = getNodeName(types[0]);
+	// console.log("start :" + new Date().getTime());
 	getAllNotRelated(types[0], function(result){
 		_editUnit(null, IX.inherit(DeviceDialogCfg[key], {
 			title : "添加设备",
@@ -4830,14 +4938,12 @@ TCM.DeviceDialog.createDevice = function(types, okFn, siteId){
 				return getTplData(rowModel, data, types, result);
 			}
 		}), okFn, types, siteId);
+		var getDriverFn = TCM.Device.getDriver;
 		var driverVal = jQuery("#device_driverId").attr("value");
-		if(jQuery(".decoder-edit").length > 0 && driverVal == driverId.JS_decoder){
-			jQuery("#device_port").attr("value", "6000");
-		}
-		if(jQuery(".IPC-edit").length > 0 || jQuery(".coder-edit").length > 0){
-			if(driverVal == driverId.DH_host_IPC || driverVal == driverId.DH_host_coder){
-				jQuery("#device_port").attr("value", "37777");
-			}
+		for (var i = 0; i < DriverList.length; i++) {
+			var driver = getDriverFn(driverVal);
+			if (driver.name == DriverList[i].name && driver.provider == DriverList[i].provider && driver.style == DriverList[i].style)
+				jQuery("#device_port").attr("value", DriverList[i].port);
 		}
 	});
 };
@@ -4910,7 +5016,7 @@ TCM.TreeDialog.addZone = function(params, el, CurrentSite){
 		if (IX.isEmpty(name))
 			return nvAlert("分区名称不能为空！");
 		if (!checkName(name))
-			return nvAlert("分区名称允许出现特殊字符/");
+			return nvAlert("分区名称请勿包含\\/^:*><|@?\"特殊字符！");
 		deviceCaller("addZone", {name: name}, function(data){
 			addZoneOkFn(data, CurrentSite);
 			hideDialog();
@@ -4933,7 +5039,7 @@ TCM.TreeDialog.editZone = function(params, el, CurrentSite){
 		if (IX.isEmpty(newName))
 			return nvAlert("新分区名称不能为空！");
 		if (!checkName(newName))
-			return nvAlert("分区名称允许出现特殊字符/");
+			return nvAlert("分区名称请勿包含\\/^:*><|@?\"特殊字符！");
 		deviceCaller("editZone", {id : id, name: newName}, function(data){
 			jQuery(".tree-node").next().children("li").each(function(){
 				var zoneA = jQuery(this).children("a").first();
@@ -5082,6 +5188,9 @@ var drivers = null;
 
 var spliterHTML = null;
 var decoderHTML = null;
+var specialDecoderHTML = null;
+var videoWallData = null;
+var channelHTML = null;
 // input搜索框暂未使用
 
 var t_input = new IX.ITemplate({tpl: ['<div><input class="search" placeholder="设备选择"><a class="pic-search"></a></div>','']});
@@ -5260,6 +5369,7 @@ var DeviceGridCfgs = {
 	"pickup" : {columns: "devType,devName,devProvider,devStyle,devDesc"},
 	"coder" : {columns: "devName,Provider,Style,devIp,devPort,devChannelNum,devDesc"},
 	"decoder" : {columns: "devName,Provider,Style,devIp,devPort,devChannelNum,devDesc"},
+	"specialDecoder" : {columns: "devName,Provider,Style,devIp,devPort,devChannelNum,devDesc"},
 	"spliter" : {columns: "devName,Provider,Style,devMaxWindow,devDesc"},
 	"monitor" : {columns: "devName,devProvider,devStyle,devDesc"},
 	"terminal" : {columns: "devName,devIp,devDesc"},
@@ -5340,17 +5450,19 @@ var TreeInfo = [
 	{name : '模拟摄像机', nodes : getLeafInfo([31, 32, 33])},
 	{name : '拾音器', nodes : getLeafInfo([40, 41])},
 	getLeafInfo([50])[0],
-	getLeafInfo([51])[0],
-	getLeafInfo([52])[0],
+	// getLeafInfo([51])[0],
+	getLeafInfo([55])[0],
+	// getLeafInfo([52])[0],
 	getLeafInfo([53])[0],
 	getLeafInfo([54])[0],
-	getLeafInfo([65])[0],
+	// getLeafInfo([65])[0],
 	{name : '网络和附属设备', nodes : getLeafInfo([60, 61, 62, 63, 64, 90])}
 ]}];
 var CurrentOne = {name: "", nodes: [
 	{name : '服务器', nodes : getLeafInfo([0, 1, 2, 3])},
 	getLeafInfo([10])[0],
-	getLeafInfo([51])[0],
+	// getLeafInfo([51])[0],
+	getLeafInfo([55])[0],
 	getLeafInfo([53])[0],
 	getLeafInfo([54])[0],
 	{name : '网络和附属设备', nodes : getLeafInfo([60, 61, 62, 63, 64, 90])}
@@ -5513,7 +5625,8 @@ var t_videoEdit = new IX.ITemplate({tpl: [
 '<ul class="videoWallEdit">',
 	'<li><span class="label">监视器</span>{relatedMonitor}</li>',
 	'<li><span class="label">关联的设备类型</span>{relatedSD}</li>',
-	'<li><span class="label choose">关联设备</span>{relatedSDR}</li>',
+	'<li><span class="label choose">关联设备名称</span>{relatedSDR}</li>',
+	'<li><span class="label channel">关联设备通道号</span>{relatedChannel}</li>',
 '</ul>',
 '']});
 
@@ -5545,21 +5658,67 @@ var t_showPlan = new IX.ITemplate({tpl: [
 
 
 var videoWallHT = new IX.IListManager();
+
+function getChannelItems(channel, deviceId, list){
+	var arr = [], isEmpty = true;	
+	arr = IX.loop(list, [], function(acc, device, idx){
+		if (device.id == deviceId) {
+			acc = [];
+			if (!IX.Array.isFound(channel, device.channels))
+				device.channels.unshift(channel);
+			for (var i = 0; i < device.channels.length; i++) {
+				acc.push({
+					id: device.channels[i],
+					name: device.channels[i]
+				});
+			}
+			isEmpty = false;
+		} else {
+			if (channel) 
+				acc = [{id: channel, name: channel}];
+		}
+		return acc;
+	});
+	if (isEmpty && deviceId)
+		list.unshift(videoWallData.spliter || videoWallData.decoder ||videoWallData.specialDecoder);
+	return arr;
+}
+
+function getRelatedChannelHTML(channel, deviceId, mark){
+	var items = [];
+	if (mark == "1") 
+		items = getChannelItems(channel, deviceId, videoWallData.notRelatedSpliter);
+	else if (mark == "2")
+		items = getChannelItems(channel, deviceId, videoWallData.notRelatedDecoder);
+	else 
+		items = getChannelItems(channel, deviceId, videoWallData.notRelatedSpecialDecoder);
+	return getComboHTML("device_relatedChannel", {
+		value: channel || "",
+		valueText: channel || "",
+		items: items
+	});
+}
 /*电视墙的添加和修改dialog显示*/
 function _show(site, okFn, data, isEdit){
+	videoWallData = data;
 	if (isEdit) {
 		data.notRelatedMonitor.unshift(data.monitor);
-		if(data.spliter.id)
-			data.notRelatedSpliter.unshift(data.spliter);
-		if(data.decoder.id)
-			data.notRelatedDecoder.unshift(data.decoder);
+		if(data.spliter.id) 
+			channelHTML = getRelatedChannelHTML(data.spliter.relatedChannel, data.spliter.id, "1");
+		if(data.decoder.id) 
+			channelHTML = getRelatedChannelHTML(data.decoder.relatedChannel, data.decoder.id, "2");
+		if(data.specialDecoder.id) 
+			channelHTML = getRelatedChannelHTML(data.specialDecoder.relatedChannel, data.specialDecoder.id, "3");
+	}else {
+		channelHTML = getRelatedChannelHTML("", "", "");
 	}
 	if (!isEdit && data.notRelatedMonitor.length === 0)
 		return nvAlert("请添加监视器后再添加电视墙！");
-	if (!isEdit && isOCC && data.notRelatedDecoder.length === 0)
+	// if (!isEdit && isOCC && (data.notRelatedDecoder.length === 0 || data.notRelatedSpecialDecoder.length === 0))
+	// 	return nvAlert("没有可用的解码器！");
+	if (!isEdit && (/*data.notRelatedSpliter.length === 0 || data.notRelatedDecoder.length === 0 || */data.notRelatedSpecialDecoder.length === 0))
 		return nvAlert("没有可用的解码器！");
-	if (!isEdit && data.notRelatedSpliter.length === 0 && data.notRelatedDecoder.length === 0)
-		return nvAlert("没有可用的画面分割器或解码器！");
+		//return nvAlert("没有可用的画面分割器或解码器！");
 	function comboHTML(caller, name, items){
 		return getComboHTML(caller, {
 			value: name.id || "",
@@ -5567,35 +5726,53 @@ function _show(site, okFn, data, isEdit){
 			items: IX.map(items, function(item){
 				return {
 					id: item.id,
-					name: item.name
+					name: item.name,
+					action: "pick.device"
 				};
 			})
 		});
 	}
 	spliterHTML = comboHTML("device_spliter", data.spliter, data.notRelatedSpliter);
 	decoderHTML = comboHTML("device_decoder", data.decoder, data.notRelatedDecoder);
+	specialDecoderHTML = comboHTML("device_specialDecoder", data.specialDecoder, data.notRelatedSpecialDecoder);
 	var SDR = null;
 	if (isEdit && data.spliter.id)
 		SDR = spliterHTML;
+	else if(isEdit && data.specialDecoder.id)
+		SDR = specialDecoderHTML;
 	else
 		SDR = decoderHTML;
 	var items = [{
 		id: 1,
 		name: "画面分割器",
-		action : "pick.one"
+		action: "pick.one"
 	},{
 		id: 2,
 		name: "解码器",
-		action : "pick.one"
+		action: "pick.one"
+	},{
+		id: 3,
+		name: "解码器",
+		action: "pick.one"
 	}];
 	var html = t_videoEdit.renderData("", {
-		relatedMonitor: comboHTML("device_monitor", data.monitor, data.notRelatedMonitor),
-		relatedSD: getComboHTML("device_choose", {
-			value : data.spliter.id? 1: 2,
-			valueText : data.spliter.id? "画面分割器": "解码器" ,
-			items : isOCC? [items[1]]: items
+		relatedMonitor: getComboHTML("device_monitor", {
+			value: data.monitor.id || "",
+			valueText: data.monitor.name || "",
+			items: IX.map(data.notRelatedMonitor, function(item){
+				return {
+					id: item.id,
+					name: item.name
+				};
+			})
 		}),
-		relatedSDR: SDR
+		relatedSD: getComboHTML("device_choose", {
+			value : /*data.spliter.id? 1 : (data.specialDecoder.id? 3 : 2)*/ 3,
+			valueText : /*data.spliter.id? "画面分割器" : (data.specialDecoder.id? "解码器(画)": "解码器" )*/"解码器",
+			items : /*isOCC? [items[1], items[2]]: */[items[2]]
+		}),
+		relatedSDR: /*SDR*/specialDecoderHTML,
+		relatedChannel: channelHTML
 	});
 	function _okFn(){
 		if(!isHandle)
@@ -5604,10 +5781,14 @@ function _show(site, okFn, data, isEdit){
 		inputData.monitor = $X("device_monitor").value;
 		inputData.spliter = $X("device_spliter") ? $X("device_spliter").value : "";
 		inputData.decoder = $X("device_decoder") ? $X("device_decoder").value : "";
+		inputData.specialDecoder = $X("device_specialDecoder") ? $X("device_specialDecoder").value : "";
+		inputData.relatedChannel = $X("device_relatedChannel") ? $X("device_relatedChannel").value : "";
 		if(inputData.monitor==="")
 			return nvAlert("请选择相应的监视器！");
-		else if(inputData.spliter===""&&inputData.decoder==="")
+		else if(inputData.spliter===""&&inputData.decoder===""&&inputData.specialDecoder==="")
 			return nvAlert("监视器至少关联一个解码器或画面分割器！");
+		else if(inputData.relatedChannel === "" && $X("device_choose").value == "3")
+			return nvAlert("关联设备的通道数不能为空！");
 		inputData.id = data.id ? data.id : "";
 		deviceCaller(isEdit ? "editVideoWall" : "addVideoWall", inputData, function(result){
 			okFn(result);
@@ -5639,7 +5820,7 @@ function _editVideo(video, okFn){
 }
 /*获取电视墙显示数据*/
 function getVideoTpldata(video){
-	var c = video.spliter || video.decoder;
+	var c = video.spliter || video.decoder || video.specialDecoder;
 	return IX.inherit(video, {
 		monitorName : video.monitor.name,
 		monitorProvider : video.monitor.provider?video.monitor.provider:"",
@@ -5674,7 +5855,7 @@ globalActionConfig([["video.add", function(params, el){
 	var video = videoWallHT.get(videoId);
 	if (!video)
 		return;
-	confirmDialog("删除电视墙", "请确认是否删除此电视？",  function(cbFn){
+	confirmDialog("删除电视墙", "请确认是否删除此电视墙？",  function(cbFn){
 		deviceCaller("deleteVideoWall", {ids : [video.id]}, function(){
 			videoWallHT.remove(videoId);
 			var liEl = el.parentNode;
@@ -5687,6 +5868,7 @@ globalActionConfig([["video.add", function(params, el){
 	var dropdownEl = $XH.ancestor(el, "dropdown");
 	if (!dropdownEl) return;
 	var inputEl = $XD.first(dropdownEl, "input");
+	if (inputEl.value == id) return;
 	inputEl.value = id;
 	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
 	nameEl.innerHTML = name;
@@ -5694,8 +5876,26 @@ globalActionConfig([["video.add", function(params, el){
 	$chooseEl.next().remove();
 	if(id == "1")
 		jQuery(spliterHTML).insertAfter($chooseEl);
-	else
+	else if(id == "2")
 		jQuery(decoderHTML).insertAfter($chooseEl);
+	else 
+		jQuery(specialDecoderHTML).insertAfter($chooseEl);
+	var $channel = jQuery(".channel");
+	$channel.next().remove();
+	jQuery(getRelatedChannelHTML("", "", $X("device_choose").value)).insertAfter($channel);
+
+}], ["pick.device", function(params, el){
+	var id = params.key, name = el.innerHTML;
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	if (inputEl.value == id) return;
+	inputEl.value = id;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
+	var $channel = jQuery(".channel");
+	$channel.next().remove();
+	jQuery(getRelatedChannelHTML("", id, $X("device_choose").value)).insertAfter($channel);
 }]]);
 /*展示电视墙*/
 function showWall(params, isHandle){
@@ -5772,7 +5972,7 @@ function showVideoWall(cbFn){
 IX.ns("TCM.Device");
 TCM.Device.init = function(pageCfg, pageParams, cbFn){
 	/*页面加载时获取driver，供设备使用*/
-	if(!drivers){
+	if (!drivers) {
 		deviceCaller("getDriver", {}, function(data){
 			drivers = data;
 			IX.iterate(data, function(item, idx){
@@ -5854,7 +6054,7 @@ var CircleComboItem = getConstant4Array(IX.map([7, 15, 30], function(c){
 var t_leafItem = new IX.ITemplate({tpl: [
 '<div class="leaf item">',
 	'<a class="nv-checkbox {chkClz}" data-type="{type}" data-href="${action}" data-key="{id}">',
-		'<span class="ixpic-"></span><span class="text">{name}</span></a>',
+		'<span class="ixpic-"></span><span class="text" title="{name}">{name}</span></a>',
 '</div>',
 '']});
 var t_showCamera = new IX.ITemplate({tpl: [
@@ -5865,18 +6065,41 @@ var t_showCamera = new IX.ITemplate({tpl: [
 	'</tpl>',
 '']});
 
+var t_nodeItem = new IX.ITemplate({tpl: [
+'<div class="leaf {clz}">',
+	'<a class="nv-checkbox {chkClz}" data-href="$zone.check" data-key="{key}">',
+		'<span class="ixpic-"></span><span class="text">{name}</span></a>',
+	'<a class="nv-collapse {expClz}" data-href="$cameraTree.expand">',
+		'<span class="pic-"></span></a>',
+'</div>',
+'']});
+
 var t_addCamera = new IX.ITemplate({tpl: [
-	'<tpl id="types">',
+'<tpl id="zones">','<div class="zone-cameras">',
+	t_nodeItem.renderData('', {clz: "zone", key:""}),
+	'<div class="tree-node1 type-cameras">','<tpl id="types">',
 		'<div class="leaf type">',
 			'<a class="nv-checkbox {chkClz}" data-href="${action}" data-type="{type}">',
 				'<span class="ixpic-"></span><span class="text">{name}</span></a>',
 			'<a class="nv-collapse {expClz}" data-href="$camera.expand">',
 				'<span class="pic-"></span></a>',
 		'</div>',
-		'<div class="node type-cameras {clz}">','<tpl id="items">',
-			t_leafItem.getTpl(),
-		'</tpl>','</div>',
-	'</tpl>',
+		'<div class="tree-node2 one-cameras {clz}">','<tpl id="items">',
+			t_leafItem.getTpl(),'</tpl>',
+		'</div>','</tpl>',
+	'</div>',
+'</div>','</tpl>',
+
+	
+'']});
+
+var t_types = new IX.ITemplate({tpl: [
+	'<div class="node type-cameras">',
+		t_leafItem.renderData('', {clz: "type", key:"type"}),
+		'<tpl id="items">',
+			t_leafItem.renderData('', {clz: "item", key:"{id}"}),
+		'</tpl>',
+	'</div>',
 '']});
 
 var DevTypes = TCM.Const.DeviceTypes;
@@ -5976,10 +6199,17 @@ function getCameraTpldatData4Cameras(cameras){
 	});
 }
 //trigger中的摄像机显示HTML
-function getCamera4TypesHTML(cameras){
-	var typeData = getCameraTpldatData4Cameras(cameras);
+function getCamera4TypesHTML(zones){
+	var zoneData = IX.map(zones, function(zone){
+		return {
+			name: zone.name,
+			chkClz: "",
+			expClz: "",
+			types: getCameraTpldatData4Cameras(zone.cameras)
+		};
+	});
 	return t_addCamera.renderData("", {
-		types: typeData
+		zones: zoneData
 	});
 }
 
@@ -6015,7 +6245,7 @@ var t_edit = new IX.ITemplate({tpl: [
 		'<h3><span class="label">当前单位的存储服务器</span></h3>',
 		'<div id="storages">','<tpl id="ss">',
 			'<a class="nv-checkbox {clz}" data-href="$store.checkToggle" data-key="{id}">',
-				'<span class="ixpic-"></span><span>{name}</span></a>',
+				'<span class="ixpic-"></span><span title="{name}">{name}</span></a>',
 		'</tpl>','</div>',
 	'</div>{showDevices}',
 	'<div id="caseCameraPanel"><h3><span class="label">未分配录像的摄像机</span></h3></div>',
@@ -6065,8 +6295,8 @@ function getSelect(ids, arr){
 		});
 	});
 }
-function getIds4Array(key){
-	return IX.map(key, function(item){ return item.id;});
+function getIds4Array(keys){
+	return IX.map(keys, function(item){ return item.id;});
 }
 //获取未分配的这相机显示
 function CaseCameraPanel(planData){
@@ -6076,7 +6306,7 @@ function CaseCameraPanel(planData){
 		IX.bind(divEl, {
 			click : function(e){
 				if ($XD.ancestor(e.target, "a")) return;
-				var el = $XH.ancestor(e.target, "type");
+				var el = $XH.ancestor(e.target, "type") || $XH.ancestor(e.target, "zone");
 				$XH.toggleClass(el, "expanded");
 				jQuery(el).find(".nv-collapse").toggleClass("expanded");
 			}
@@ -6177,12 +6407,6 @@ function PlanVM(data, result){
 			plan[key].push(value);
 		else
 			plan[key] = IX.Array.remove(plan[key], value);
-		if (key == "cameras") {
-			IX.iterate(result.cameras, function(c, idx){
-				if (c.id == value)
-					c.selected = isAdd;
-			});
-		}
 	}
 	//获取提交给后台的数据，并验证是否符合提交格式
 	function _getData(){
@@ -6243,13 +6467,13 @@ function PlanVM(data, result){
 		var toValue = getNameByIdInArray(ToComboItem, plan.to) || "24:00";
 		function getShowDevicesHTML(){
 			if (isOCC && isHandle) {
-				var monitors = data ? data.monitors: [];
+				var monitors = data.id ? data.monitors: [];
 				return t_showMonitors.renderData("",{
 					showMonitor: getMonitor4HTML(monitors, monitors.concat(result.monitors))
 				});
 			} else {
 				return t_showCameras.renderData("",{
-					showCamera: getCamera4HTML(data ? IX.map(data.cameras, function(c){ 
+					showCamera: getCamera4HTML(data.id ? IX.map(data.cameras, function(c){ 
 						return IX.inherit(c, {selected: true});
 					}) : [])
 				});
@@ -6273,7 +6497,7 @@ function PlanVM(data, result){
 		setArr : _setArr,
 		getPlanDays : function(){ return plan.days;},
 		cameraRefreshHTML : function(){
-			var camerasHTML = getCamera4TypesHTML(result.cameras);
+			var camerasHTML = getCamera4TypesHTML(result.zones);
 			if(!camerasHTML)
 				return '<span class="hint">没有未分配的摄像机，请添加摄像机后再试！</span>';
 			else
@@ -6285,7 +6509,7 @@ function PlanVM(data, result){
 //操作单个摄像机的勾选状态对数据和DOM的操作
 function checkOne(key, el, isAdd){
 	var type = Number($XD.dataAttr(el, "type"));
-	var $parent = jQuery(".cameras"+getTypeIdx(type));
+	var $parent = jQuery($XH.ancestor(el, "one-cameras"));
 	jQuery('[data-key="'+key+'"]')[isAdd? "addClass": "removeClass"]("selected");
 	if (isAdd && jQuery('.showCamera [data-key="'+key+'"]').length === 0) {
 		var $accept = jQuery(".show-cameras"+getTypeIdx(type));
@@ -6295,33 +6519,30 @@ function checkOne(key, el, isAdd){
 		}
 		$accept.append(jQuery(el.parentNode).clone());
 	}
+	planData.setArr("cameras", key, isAdd);
 	var max = $parent.find(".nv-checkbox").length;
 	if (max === 0) return;
 	var count = $parent.find(".selected").length;
 	var $a = $parent.prev().find(".nv-checkbox");
-	if (count === max)
+	var $parents = $a.parents(".type-cameras");
+	if (count === max){
 		$a.removeClass("part").addClass("selected");
-	else if (count === 0)
+		if ($parents.find(".type .nv-checkbox").length == $parents.find(".type .selected").length)
+			return $parents.prev(".zone").find(".nv-checkbox").removeClass("part").addClass("selected");
+	} else if (count === 0) {
 		$a.removeClass("part").removeClass("selected");
-	else
+		if ($parents.find(".type .selected").length === 0)
+			return $parents.prev(".zone").find(".nv-checkbox").removeClass("part").removeClass("selected");
+	} else {
 		$a.removeClass("selected").addClass("part");
+	}
+	$parents.prev(".zone").find(".nv-checkbox").removeClass("selected").addClass("part");
 }
 //操作摄像机总类的勾选状态对数据和DOM的操作
-function checkAll(el, isAdd){
+function checkType(el, isAdd){
 	jQuery(el.parentNode).next().find(".nv-checkbox").each(function(){
 		var key = jQuery(this).attr("data-key");
-		if (isAdd) {
-			var parentClass = "show-cameras" + Number($XD.dataAttr(el, "type"));
-			var $parent = jQuery("."+parentClass);
-			if ($parent.length === 0) {
-				$parent = jQuery('<div class="node ' + parentClass + '"></div>');
-				jQuery(".showCamera").append($parent);
-			}
-			if (jQuery('.showCamera [data-key="'+key+'"]').length === 0)
-				$parent.append(jQuery(this.parentNode).clone());
-		}
-		jQuery('[data-key="'+key+'"]')[isAdd? "addClass": "removeClass"]("selected");
-		planData.setArr("cameras", key, isAdd);
+		checkOne(key, this, isAdd);
 	});
 }
 globalActionConfig([["store.pick", function(params, el){
@@ -6338,6 +6559,12 @@ globalActionConfig([["store.pick", function(params, el){
 	if (!isHandle) return;
 	var ifChecked = !$XH.hasClass(el, "selected");
 	$XH[ifChecked? "addClass": "removeClass"](el, "selected");
+	jQuery(el).siblings().each(function(){
+		if ($XH.hasClass(this, "selected")) {
+			$XH.removeClass(this, "selected");
+			planData.setArr("storages", $XD.attr(this, "data-key"), false);
+		}
+	});
 	planData.setArr("storages", params.key, ifChecked);
 }],["store.popDays", function(params, el, evt){
 	if (!isHandle) return;
@@ -6371,24 +6598,44 @@ globalActionConfig([["store.pick", function(params, el){
 		return planData.setArr("monitors", params.key, ifChecked);
 	if ($XH.hasClass(el.parentNode, "type")) {
 		$XH.removeClass(el, "part");
-		checkAll(el, ifChecked);
+		checkType(el, ifChecked);
 	} else {
-		planData.setArr("cameras", params.key, ifChecked);
 		checkOne(params.key, el, ifChecked);
 	}
+}],["zone.check", function(params, el){
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH.removeClass(el, "part");
+	$XH.toggleClass(el, "selected");
+	jQuery($XH.ancestor(el, "zone")).next().find(".nv-checkbox")[ifChecked? "addClass": "removeClass"]("selected");
+	jQuery($XH.ancestor(el, "zone")).next().find(".type .nv-checkbox").each(function(){
+		checkType(this, ifChecked);
+	});
 }]]);
 //新增和修改Plan时dialog， data用于判断添加/修改
 function _showPlanDialog(id, okFn, data){
 	storeCaller("getDevices4Plan", {siteId: id}, function(result){
+		var count = 0;
 		if (isOCC && result.msg)
 			nvAlert(result.msg);
 		if (!data.id && result.storages.length === 0)
 			return nvAlert("请添加存储服务器后再添加录像计划！");
-		if (!data.id && !isOCC && result.cameras.length === 0)
-			return nvAlert("请添加摄像机后再添加录像计划！");
+		if (!data.id && !isOCC) {
+			if (result.zones.length === 0)
+				return nvAlert("请添加摄像机后再添加录像计划！");
+			IX.iterate(result.zones, function(zone){
+				if (zone.cameras.length === 0)
+					count++;
+			});
+			if (result.zones.length === count)
+				return nvAlert("请添加摄像机后再添加录像计划！");
+		}
 		if (!data.id && isOCC && result.monitors.length ===0)
 			return nvAlert("请添加监视器后再添加录像计划！");
 		caseCameraPanel = null;
+		IX.iterate(result.zones, function(zone){
+			if (zone.name === "")
+				zone.name = "未分区摄像机";
+		});
 		planData = new PlanVM(data, result);
 		function _okFn(){
 			if (!isHandle) return;
@@ -6608,6 +6855,26 @@ var ixwActions = IXW.Actions;
 
 var SiteTypes = TCM.Const.SiteTypes;
 var UserTypes = TCM.Const.UserTypes;
+
+var kickChecker = new TCM.Util.PeriodicChecker("", function(isStarted, cbFn){
+	TCM.Global.commonCaller("isKicked", "", function(data){
+		if (data && data.status === 1) {
+			return NV.Dialog.confirm4login("提示", "有新管理员登录系统，请您退出！",{
+				left : [],
+				right : [{name : "ok",text : "确定"}]
+			},function(){
+				clearSession();
+			});
+		}
+		isStarted = true;
+		cbFn();
+	});
+}, 1);
+
+function startChecker(){
+	kickChecker.stop();
+	kickChecker.start();
+}
 
 var t_page = new IX.ITemplate({tpl: [
 	'<nav class="navbar navbar-inverse navbar-fixed-top">',
@@ -6854,6 +7121,7 @@ var navMgr = new NavManager();
 function clearSession(){
 	sessionMgr = new SessionManager();
 	TCM.LineInfo.destroy();
+	kickChecker.stop();
 	IXW.Pages.load("entry");
 }
 function startSession(data){
@@ -6866,6 +7134,7 @@ function startSession(data){
 		sitename : nowSite
 	});
 	navMgr.enableHover();
+	startChecker();
 }
 var PagesConfiurations = IX.map([
 //{type?, name+, path?, bodyClz?, needAuth?},
@@ -6983,6 +7252,7 @@ TCM.Env.getSession = function(){return sessionMgr;};
 TCM.Env.canUpdateLineInfo = function(){
 	return sessionMgr.checkIfModuleEnabled("lineInfo");
 };
+TCM.Env.isKicked = function(){kickChecker.stop();};
 
 var appInitialized = false;
 TCM.init = function(){

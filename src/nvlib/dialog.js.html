@@ -61,23 +61,29 @@ globalActionConfig([["nvdialog-click",function(params,el){
 }]]);
 function dialogBodyRefresh(bodyEl){
 	bodyEl.className = "ixw-body nv-dialog " + $XP(dialogCfg, "clz", "");
+	// console.log("inner-start: " + new Date().getTime());
 	bodyEl.innerHTML = t_modal.renderData("", {
 		title : $XP(dialogCfg, "title", ""),
 		content : $XP(dialogCfg, "content", ""),
 		lbtns : $XP(dialogCfg, "btns.left", CommonBtns.left),
 		rbtns : $XP(dialogCfg, "btns.right", CommonBtns.right)
 	});
+	// console.log("inner-end: " + new Date().getTime());
 	$XF(dialogCfg, "afterShow")(bodyEl);
 }
 
 function showDialog(cfg){
 	dialogCfg = cfg;
+	if (jQuery(".confirmLogin").length !== 0)
+		return;
 	if (!dialog)
 		dialog = new IXW.Lib.ModalDialog({
 			id : "nv-dialog",
 			bodyRefresh : dialogBodyRefresh
 		});
+	// console.log("show: "+ new Date().getTime());
 	dialog.show();
+	// console.log("show-look: "+ new Date().getTime());
 }
 
 function _alert(content){
@@ -112,11 +118,14 @@ NV.Dialog.confirm = function(title, msg, okFn){ showDialog({
 	listen : { ok : function(){okFn(hideDialog);} }
 });};
 
-NV.Dialog.confirm4login = function(title, msg, btns, okFn){ showDialog({
-	title : IX.encodeTXT(title),
-	btns : btns,
-	content : t_confirm.renderData("", {msg: msg}),
-	listen : { ok : function(){okFn(hideDialog);} }
+NV.Dialog.confirm4login = function(title, msg, btns, okFn){ 
+	showDialog({
+		title : IX.encodeTXT(title),
+		clz: "confirmLogin",
+		btns : btns,
+		content : t_confirm.renderData("", {msg: msg}),
+		listen : { ok : function(){okFn(hideDialog);} 
+	}
 });};
 
 NV.Dialog.alert = _alert;

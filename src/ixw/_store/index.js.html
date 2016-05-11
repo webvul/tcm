@@ -42,7 +42,7 @@ var CircleComboItem = getConstant4Array(IX.map([7, 15, 30], function(c){
 <tpl id="leafItem">
 <div class="leaf item">
 	<a class="nv-checkbox {chkClz}" data-type="{type}" data-href="${action}" data-key="{id}">
-		<span class="ixpic-"></span><span class="text">{name}</span></a>
+		<span class="ixpic-"></span><span class="text" title="{name}">{name}</span></a>
 </div>
 </tpl>	
 <tpl id="showCamera">
@@ -53,18 +53,41 @@ var CircleComboItem = getConstant4Array(IX.map([7, 15, 30], function(c){
 	</tpl>
 </tpl>
 
+<tpl id="nodeItem">
+<div class="leaf {clz}">
+	<a class="nv-checkbox {chkClz}" data-href="$zone.check" data-key="{key}">
+		<span class="ixpic-"></span><span class="text">{name}</span></a>
+	<a class="nv-collapse {expClz}" data-href="$cameraTree.expand">
+		<span class="pic-"></span></a>
+</div>
+</tpl>
+
 <tpl id="addCamera">
-	<tpl id="types">
+<tpl id="zones"><div class="zone-cameras">
+	<use id=".nodeItem" data='{clz: "zone", key:""}'>
+	<div class="tree-node1 type-cameras"><tpl id="types">
 		<div class="leaf type">
 			<a class="nv-checkbox {chkClz}" data-href="${action}" data-type="{type}">
 				<span class="ixpic-"></span><span class="text">{name}</span></a>
 			<a class="nv-collapse {expClz}" data-href="$camera.expand">
 				<span class="pic-"></span></a>
 		</div>
-		<div class="node type-cameras {clz}"><tpl id="items">
-			<use id=".leafItem">
-		</tpl></div>
-	</tpl>
+		<div class="tree-node2 one-cameras {clz}"><tpl id="items">
+			<use id=".leafItem"></tpl>
+		</div></tpl>
+	</div>
+</div></tpl>
+
+	
+</tpl>
+
+<tpl id="types">
+	<div class="node type-cameras">
+		<use id=".leafItem" data='{clz: "type", key:"type"}'>
+		<tpl id="items">
+			<use id=".leafItem" data='{clz: "item", key:"{id}"}'>
+		</tpl>
+	</div>
 </tpl>
 <script>
 var DevTypes = TCM.Const.DeviceTypes;
@@ -164,10 +187,17 @@ function getCameraTpldatData4Cameras(cameras){
 	});
 }
 //trigger中的摄像机显示HTML
-function getCamera4TypesHTML(cameras){
-	var typeData = getCameraTpldatData4Cameras(cameras);
+function getCamera4TypesHTML(zones){
+	var zoneData = IX.map(zones, function(zone){
+		return {
+			name: zone.name,
+			chkClz: "",
+			expClz: "",
+			types: getCameraTpldatData4Cameras(zone.cameras)
+		};
+	});
 	return t_addCamera.renderData("", {
-		types: typeData
+		zones: zoneData
 	});
 }
 </script>
@@ -203,7 +233,7 @@ function getCamera4TypesHTML(cameras){
 		<h3><span class="label">当前单位的存储服务器</span></h3>
 		<div id="storages"><tpl id="ss">
 			<a class="nv-checkbox {clz}" data-href="$store.checkToggle" data-key="{id}">
-				<span class="ixpic-"></span><span>{name}</span></a>
+				<span class="ixpic-"></span><span title="{name}">{name}</span></a>
 		</tpl></div>
 	</div>{showDevices}
 	<div id="caseCameraPanel"><h3><span class="label">未分配录像的摄像机</span></h3></div>
@@ -253,8 +283,8 @@ function getSelect(ids, arr){
 		});
 	});
 }
-function getIds4Array(key){
-	return IX.map(key, function(item){ return item.id;});
+function getIds4Array(keys){
+	return IX.map(keys, function(item){ return item.id;});
 }
 //获取未分配的这相机显示
 function CaseCameraPanel(planData){
@@ -264,7 +294,7 @@ function CaseCameraPanel(planData){
 		IX.bind(divEl, {
 			click : function(e){
 				if ($XD.ancestor(e.target, "a")) return;
-				var el = $XH.ancestor(e.target, "type");
+				var el = $XH.ancestor(e.target, "type") || $XH.ancestor(e.target, "zone");
 				$XH.toggleClass(el, "expanded");
 				jQuery(el).find(".nv-collapse").toggleClass("expanded");
 			}
@@ -365,12 +395,6 @@ function PlanVM(data, result){
 			plan[key].push(value);
 		else
 			plan[key] = IX.Array.remove(plan[key], value);
-		if (key == "cameras") {
-			IX.iterate(result.cameras, function(c, idx){
-				if (c.id == value)
-					c.selected = isAdd;
-			});
-		}
 	}
 	//获取提交给后台的数据，并验证是否符合提交格式
 	function _getData(){
@@ -431,13 +455,13 @@ function PlanVM(data, result){
 		var toValue = getNameByIdInArray(ToComboItem, plan.to) || "24:00";
 		function getShowDevicesHTML(){
 			if (isOCC && isHandle) {
-				var monitors = data ? data.monitors: [];
+				var monitors = data.id ? data.monitors: [];
 				return t_showMonitors.renderData("",{
 					showMonitor: getMonitor4HTML(monitors, monitors.concat(result.monitors))
 				});
 			} else {
 				return t_showCameras.renderData("",{
-					showCamera: getCamera4HTML(data ? IX.map(data.cameras, function(c){ 
+					showCamera: getCamera4HTML(data.id ? IX.map(data.cameras, function(c){ 
 						return IX.inherit(c, {selected: true});
 					}) : [])
 				});
@@ -461,7 +485,7 @@ function PlanVM(data, result){
 		setArr : _setArr,
 		getPlanDays : function(){ return plan.days;},
 		cameraRefreshHTML : function(){
-			var camerasHTML = getCamera4TypesHTML(result.cameras);
+			var camerasHTML = getCamera4TypesHTML(result.zones);
 			if(!camerasHTML)
 				return '<span class="hint">没有未分配的摄像机，请添加摄像机后再试！</span>';
 			else
@@ -473,7 +497,7 @@ function PlanVM(data, result){
 //操作单个摄像机的勾选状态对数据和DOM的操作
 function checkOne(key, el, isAdd){
 	var type = Number($XD.dataAttr(el, "type"));
-	var $parent = jQuery(".cameras"+getTypeIdx(type));
+	var $parent = jQuery($XH.ancestor(el, "one-cameras"));
 	jQuery('[data-key="'+key+'"]')[isAdd? "addClass": "removeClass"]("selected");
 	if (isAdd && jQuery('.showCamera [data-key="'+key+'"]').length === 0) {
 		var $accept = jQuery(".show-cameras"+getTypeIdx(type));
@@ -483,33 +507,30 @@ function checkOne(key, el, isAdd){
 		}
 		$accept.append(jQuery(el.parentNode).clone());
 	}
+	planData.setArr("cameras", key, isAdd);
 	var max = $parent.find(".nv-checkbox").length;
 	if (max === 0) return;
 	var count = $parent.find(".selected").length;
 	var $a = $parent.prev().find(".nv-checkbox");
-	if (count === max)
+	var $parents = $a.parents(".type-cameras");
+	if (count === max){
 		$a.removeClass("part").addClass("selected");
-	else if (count === 0)
+		if ($parents.find(".type .nv-checkbox").length == $parents.find(".type .selected").length)
+			return $parents.prev(".zone").find(".nv-checkbox").removeClass("part").addClass("selected");
+	} else if (count === 0) {
 		$a.removeClass("part").removeClass("selected");
-	else
+		if ($parents.find(".type .selected").length === 0)
+			return $parents.prev(".zone").find(".nv-checkbox").removeClass("part").removeClass("selected");
+	} else {
 		$a.removeClass("selected").addClass("part");
+	}
+	$parents.prev(".zone").find(".nv-checkbox").removeClass("selected").addClass("part");
 }
 //操作摄像机总类的勾选状态对数据和DOM的操作
-function checkAll(el, isAdd){
+function checkType(el, isAdd){
 	jQuery(el.parentNode).next().find(".nv-checkbox").each(function(){
 		var key = jQuery(this).attr("data-key");
-		if (isAdd) {
-			var parentClass = "show-cameras" + Number($XD.dataAttr(el, "type"));
-			var $parent = jQuery("."+parentClass);
-			if ($parent.length === 0) {
-				$parent = jQuery('<div class="node ' + parentClass + '"></div>');
-				jQuery(".showCamera").append($parent);
-			}
-			if (jQuery('.showCamera [data-key="'+key+'"]').length === 0)
-				$parent.append(jQuery(this.parentNode).clone());
-		}
-		jQuery('[data-key="'+key+'"]')[isAdd? "addClass": "removeClass"]("selected");
-		planData.setArr("cameras", key, isAdd);
+		checkOne(key, this, isAdd);
 	});
 }
 globalActionConfig([["store.pick", function(params, el){
@@ -526,6 +547,12 @@ globalActionConfig([["store.pick", function(params, el){
 	if (!isHandle) return;
 	var ifChecked = !$XH.hasClass(el, "selected");
 	$XH[ifChecked? "addClass": "removeClass"](el, "selected");
+	jQuery(el).siblings().each(function(){
+		if ($XH.hasClass(this, "selected")) {
+			$XH.removeClass(this, "selected");
+			planData.setArr("storages", $XD.attr(this, "data-key"), false);
+		}
+	});
 	planData.setArr("storages", params.key, ifChecked);
 }],["store.popDays", function(params, el, evt){
 	if (!isHandle) return;
@@ -559,24 +586,44 @@ globalActionConfig([["store.pick", function(params, el){
 		return planData.setArr("monitors", params.key, ifChecked);
 	if ($XH.hasClass(el.parentNode, "type")) {
 		$XH.removeClass(el, "part");
-		checkAll(el, ifChecked);
+		checkType(el, ifChecked);
 	} else {
-		planData.setArr("cameras", params.key, ifChecked);
 		checkOne(params.key, el, ifChecked);
 	}
+}],["zone.check", function(params, el){
+	var ifChecked = !$XH.hasClass(el, "selected");
+	$XH.removeClass(el, "part");
+	$XH.toggleClass(el, "selected");
+	jQuery($XH.ancestor(el, "zone")).next().find(".nv-checkbox")[ifChecked? "addClass": "removeClass"]("selected");
+	jQuery($XH.ancestor(el, "zone")).next().find(".type .nv-checkbox").each(function(){
+		checkType(this, ifChecked);
+	});
 }]]);
 //新增和修改Plan时dialog， data用于判断添加/修改
 function _showPlanDialog(id, okFn, data){
 	storeCaller("getDevices4Plan", {siteId: id}, function(result){
+		var count = 0;
 		if (isOCC && result.msg)
 			nvAlert(result.msg);
 		if (!data.id && result.storages.length === 0)
 			return nvAlert("请添加存储服务器后再添加录像计划！");
-		if (!data.id && !isOCC && result.cameras.length === 0)
-			return nvAlert("请添加摄像机后再添加录像计划！");
+		if (!data.id && !isOCC) {
+			if (result.zones.length === 0)
+				return nvAlert("请添加摄像机后再添加录像计划！");
+			IX.iterate(result.zones, function(zone){
+				if (zone.cameras.length === 0)
+					count++;
+			});
+			if (result.zones.length === count)
+				return nvAlert("请添加摄像机后再添加录像计划！");
+		}
 		if (!data.id && isOCC && result.monitors.length ===0)
 			return nvAlert("请添加监视器后再添加录像计划！");
 		caseCameraPanel = null;
+		IX.iterate(result.zones, function(zone){
+			if (zone.name === "")
+				zone.name = "未分区摄像机";
+		});
 		planData = new PlanVM(data, result);
 		function _okFn(){
 			if (!isHandle) return;

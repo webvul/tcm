@@ -35,8 +35,8 @@ function _deleteUnits(rowModels, cfg, okFn){
 		});
 	});
 }
-function checkChinese(s){
-	var re = /[^\u4E00-\u9FA5]+/g; 
+function checkPassWord(s){
+	var re = /^[0-9_a-zA-Z]{1,20}$/; 
 	return re.test(s);
 }
 function verifyForm(value, msg, name){
@@ -48,9 +48,9 @@ function verifyForm(value, msg, name){
 		}
 	}
 	if(name == "password" && value !== ""){
-		var value1 = checkChinese(value);
+		var value1 = checkPassWord(value);
 		if (!value1){
-			nvAlert("密码不允许出现汉字！");
+			nvAlert("密码只允许数字、字母和下划线，且最长为20位！");
 			return false;
 		}
 	}
@@ -110,6 +110,13 @@ function _editUnit(rowModel, cfg, okFn){
 			var result = checkSiteName(info.name);
 			if(!result)
 				{return false;}
+		}
+		if(info.account && !info.account.isWindowsDirectory()){
+			return nvAlert(IX.encodeTXT("登录账号中请勿包含\\/^:*><|@?\"特殊字符！"));
+		}
+		if(info.name){
+			if (cfg.clz != "sys-editSite" && !info.name.isWindowsDirectory())
+			return nvAlert(IX.encodeTXT("名称中请勿包含\\/^:*><|@?\"特殊字符！"));
 		}
 		var checkFn = $XP(cfg, "checkInfo");
 		if (!info || (IX.isFn(checkFn) && !checkFn(info))) return;
@@ -294,13 +301,13 @@ var LevelDialogCfg = {
 		data.stationPromptedCheckbox = getCheckboxHTML(
 			"station_prompted", 
 			!!data.station_prompted,
-			"需要启动临时授权"
+			"允许临时权限提升"
 		);
 		data.depotRoleCombo = getRoleComboHTML("depot_role", data.depot_role, true);
 		data.depotPromptedCheckbox = getCheckboxHTML(
 			"depot_prompted", 
 			!!data.depot_prompted,
-			"需要启动临时授权"
+			"允许临时权限提升"
 		);
 		return data;
 	},
@@ -322,7 +329,7 @@ TCM.SysDialog.editLevel = function(rowModel, okFn){
 <ul class="{clz}">
 	<li><span class="label">所属单位</span>
 		<input type="hidden" id="user_site" value="{user_site}"><span>{siteName}</span></li>
-	<li><span class="label">分类</span>{userTypeCombo}</li>
+	<li><span class="label">用户类型</span>{userTypeCombo}</li>
 	<li><span class="label">用户名</span>
 		<span><input id="user_name" maxlength="32" value="{user_name}"></span></li>
 	<li><span class="label">登录账号</span>
@@ -402,7 +409,10 @@ var UserDialogCfg = {
 		data.user_desc = data.user_desc || "";
 		data.user_site = data.user_site || TCM.Env.getSession().getCurrentSiteId();
 		data.siteName = TCM.LineInfo.getSiteName(data.user_site);
-		data.userTypeCombo = isSuper ? getRootUserComboHTML("user_type", data.user_type) : getUserTypeComboHTML("user_type", data.user_type);
+		if (rowModel)
+			data.userTypeCombo = '<span><input disabled id="user_type" maxlength="32" value="'+UserTypeNames[data.user_type]+'"></span>';
+		else
+			data.userTypeCombo = isSuper ? getRootUserComboHTML("user_type", data.user_type) : getUserTypeComboHTML("user_type", data.user_type);
 		data.clz = isSuper?"isAdmin":(data.user_type == 1 ? "isAdmin" : "isUser");
 		data.roleCombo = getRoleComboHTML("user_role",  data.user_role, false);
 		return data;

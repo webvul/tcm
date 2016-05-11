@@ -7739,31 +7739,31 @@ body .ui-tooltip {
 }
 .ixw-dp .dt-prevy:hover {
   /* width: 10px; height:10px; */
-  background-position: -112px -78px;
+  background-position: -112px -60px;
 }
 .ixw-dp .dt-prevm {
   /* width: 6px; height:10px; */
-  background-position: -132px -53px;
+  background-position: -18px -106px;
 }
 .ixw-dp .dt-prevm:hover {
   /* width: 6px; height:10px; */
-  background-position: -18px -106px;
+  background-position: -132px -18px;
 }
 .ixw-dp .dt-nextm {
   /* width: 6px; height:10px; */
-  background-position: -132px 0;
+  background-position: -132px -36px;
 }
 .ixw-dp .dt-nextm:hover {
   /* width: 6px; height:10px; */
-  background-position: -132px -35px;
+  background-position: -132px 0;
 }
 .ixw-dp .dt-nexty {
   /* width: 10px; height:10px; */
-  background-position: 0 -106px;
+  background-position: -112px -78px;
 }
 .ixw-dp .dt-nexty:hover {
   /* width: 10px; height:10px; */
-  background-position: -112px -60px;
+  background-position: 0 -106px;
 }
 .ixw-dp .dp-year,
 .ixw-dp .dp-month {
@@ -7845,12 +7845,12 @@ body .ui-tooltip {
   width: 12px;
   height: 6px;
   /* width: 12px; height:6px; */
-  background-position: -90px -82px;
+  background-position: -112px -14px;
   margin: 0;
 }
 .ixw-dp .dt-prev {
   /* width: 12px; height:6px; */
-  background-position: -112px -14px;
+  background-position: -90px -82px;
 }
 .ixw-dp a:hover > .dt-prev {
   /* width: 12px; height:6px; */
@@ -8035,27 +8035,27 @@ body .ui-tooltip {
   background-image: url(../images/ixpic.png);
   background-repeat: no-repeat;
   /* width: 6px; height:9px; */
-  background-position: -132px -18px;
+  background-position: -74px -106px;
 }
 .ixw-pg .hover .pg-prev {
   /* width: 6px; height:9px; */
-  background-position: -32px -106px;
+  background-position: -60px -106px;
 }
 .ixw-pg .disabled .pg-prev {
   /* width: 6px; height:9px; */
-  background-position: -132px -71px;
+  background-position: -46px -106px;
 }
 .ixw-pg .pg-next {
   /* width: 6px; height:9px; */
-  background-position: -96px -58px;
+  background-position: -32px -106px;
 }
 .ixw-pg .hover .pg-next {
   /* width: 6px; height:9px; */
-  background-position: -46px -106px;
+  background-position: -132px -54px;
 }
 .ixw-pg .disabled .pg-next {
   /* width: 6px; height:9px; */
-  background-position: -60px -106px;
+  background-position: -96px -58px;
 }
 .ixw-pg .go {
   border: 1px solid #e1e1e1;
@@ -8107,7 +8107,7 @@ body .ui-tooltip {
   background-image: url(../images/ixpic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -68px -82px;
+  background-position: -46px -82px;
 }
 .ixw-chks .selected .ixpic- {
   /* width: 14px; height:14px; */
@@ -8177,10 +8177,20 @@ body .ui-tooltip {
   opacity: 0;
   text-align: center;
 }
+.ixw-info .ixw-bg {
+  margin-bottom: 0;
+  height: 58px;
+  border-radius: 3px;
+  background: #191919;
+}
 .ixw-info .content {
   font-size: 14px;
   font-family: "微软雅黑";
   line-height: 60px;
+  position: absolute;
+  top: 0;
+  left: 5%;
+  right: 5%;
 }
 .animate-fallInfo {
   -webkit-animation: fall-info 3.5s;
@@ -8259,7 +8269,7 @@ nav .navbar-header .badges {
   background-image: url(../images/logo.png);
   background-repeat: no-repeat;
   /* width: 238px; height:28px; */
-  background-position: -283px -98px;
+  background-position: -368px -98px;
 }
 nav .navbar-header .navbar-brand {
   display: none;
@@ -8288,19 +8298,19 @@ nav .pic-avatar {
 }
 nav .nav-sys {
   /* width: 24px; height:24px; */
-  background-position: -218px -546px;
+  background-position: -494px -484px;
 }
 nav .nav-device {
   /* width: 24px; height:24px; */
-  background-position: -500px -509px;
+  background-position: -238px -484px;
 }
 nav .nav-store {
   /* width: 24px; height:24px; */
-  background-position: -250px -546px;
+  background-position: -462px -484px;
 }
 nav .pic-avatar {
   /* width: 20px; height:24px; */
-  background-position: -626px -495px;
+  background-position: -546px -448px;
 }
 nav .main {
   border-left: 1px solid #22272b;
@@ -8549,19 +8559,19 @@ nav .logout a:hover .sp {
 }
 .ixw-modal-dialog .okbtn {
   /* width: 87px; height:28px; */
-  background-position: -433px -248px;
+  background-position: -476px -236px;
 }
 .ixw-modal-dialog .okbtn:hover {
   /* width: 87px; height:28px; */
-  background-position: -238px -258px;
+  background-position: -238px -412px;
 }
 .ixw-modal-dialog .cancelbtn {
   /* width: 87px; height:28px; */
-  background-position: -338px -248px;
+  background-position: -476px -200px;
 }
 .ixw-modal-dialog .cancelbtn:hover {
   /* width: 87px; height:28px; */
-  background-position: -238px -150px;
+  background-position: -333px -412px;
 }
 .nv-dialog {
   width: 384px;
@@ -8639,7 +8649,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/ixpic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -68px -82px;
+  background-position: -46px -82px;
 }
 .ixw-grid .col-_check .selected {
   /* width: 14px; height:14px; */
@@ -8763,7 +8773,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 11px; height:5px; */
-  background-position: -654px -76px;
+  background-position: -476px -344px;
 }
 .nv-grid .nvgrid-foot .r .dropdown-menu {
   left: 0px;
@@ -8786,7 +8796,7 @@ nav .logout a:hover .sp {
   border: 1px solid #fff;
 }
 .ixw-bg {
-  opacity: 0.4;
+  opacity: 0.5;
 }
 .ixw-close {
   opacity: 1;
@@ -8808,10 +8818,10 @@ nav .logout a:hover .sp {
   animation: shake 0.5s;
 }
 .ixw-info {
-  border: 1px solid #5edbff;
+  border: 1px solid #fff;
 }
 .ixw-info .content {
-  color: #5edbff;
+  color: #fff;
 }
 #IXW-alert .ixw-confirm .ixw-bg {
   height: 120px;
@@ -8853,44 +8863,44 @@ nav .logout a:hover .sp {
 }
 .btn-refresh {
   /* width: 35px; height:35px; */
-  background-position: -100px -546px;
+  background-position: -511px -516px;
   width: 35px;
 }
 .btn-refresh:hover {
   /* width: 35px; height:35px; */
-  background-position: -143px -546px;
+  background-position: -468px -516px;
 }
 .btn-create {
   /* width: 70px; height:35px; */
-  background-position: -576px -258px;
+  background-position: -312px -516px;
 }
 .btn-create:hover {
   /* width: 70px; height:35px; */
-  background-position: -576px -43px;
+  background-position: -234px -516px;
 }
 .btn-discreate {
   /* width: 70px; height:35px; */
-  background-position: -316px -466px;
+  background-position: -576px -246px;
 }
 .btn-add {
   /* width: 70px; height:35px; */
-  background-position: -160px -466px;
+  background-position: -576px -375px;
 }
 .btn-add:hover {
   /* width: 70px; height:35px; */
-  background-position: -576px -86px;
+  background-position: -576px -289px;
 }
 .btn-delete {
   /* width: 70px; height:35px; */
-  background-position: -476px -416px;
+  background-position: -576px -203px;
 }
 .btn-delete:hover {
   /* width: 70px; height:35px; */
-  background-position: -490px -158px;
+  background-position: -576px -160px;
 }
 .btn-delete.disabled {
   /* width: 70px; height:35px; */
-  background-position: -576px -172px;
+  background-position: -390px -516px;
 }
 [class^="act-"],
 [class*=" act-"] {
@@ -8904,7 +8914,7 @@ nav .logout a:hover .sp {
 }
 .act-chgpwd {
   /* width: 24px; height:24px; */
-  background-position: -372px -509px;
+  background-position: -526px -484px;
 }
 .act-chgpwd:hover {
   background-color: #3eb6e3;
@@ -8912,7 +8922,7 @@ nav .logout a:hover .sp {
 }
 .act-chgpriv {
   /* width: 24px; height:24px; */
-  background-position: -468px -509px;
+  background-position: -302px -484px;
 }
 .act-chgpriv:hover {
   background-color: #3eb6e3;
@@ -8920,15 +8930,23 @@ nav .logout a:hover .sp {
 }
 .act-edit {
   /* width: 24px; height:24px; */
-  background-position: -340px -509px;
+  background-position: -430px -484px;
 }
 .act-edit:hover {
   background-color: #3eb6e3;
   border-radius: 2px;
 }
+.act-reset {
+  /* width: 24px; height:24px; */
+  background-position: -334px -484px;
+}
+.act-reset:hover {
+  background-color: #3eb6e3;
+  border-radius: 2px;
+}
 .act-delete {
   /* width: 24px; height:24px; */
-  background-position: -186px -546px;
+  background-position: -340px -559px;
 }
 .act-delete:hover {
   background-color: #3eb6e3;
@@ -9058,7 +9076,7 @@ nav .logout a:hover .sp {
 }
 .nv-checkbox .ixpic- {
   /* width: 14px; height:14px; */
-  background-position: -68px -82px;
+  background-position: -46px -82px;
 }
 .nv-checkbox.selected .ixpic- {
   /* width: 14px; height:14px; */
@@ -9079,13 +9097,13 @@ nav .logout a:hover .sp {
 }
 .nv-collapse .pic- {
   /* width: 12px; height:12px; */
-  background-position: -484px -546px;
+  background-position: -238px -609px;
   height: 12px;
   width: 12px;
 }
 .nv-collapse.expanded .pic- {
   /* width: 12px; height:12px; */
-  background-position: -464px -546px;
+  background-position: -318px -609px;
 }
 .ixw-modal-dialog .ixw-body {
   overflow: visible;
@@ -9126,7 +9144,7 @@ nav .logout a:hover .sp {
   height: 12px;
   width: 12px;
   /* width: 8px; height:5px; */
-  background-position: -654px -89px;
+  background-position: -656px -76px;
   margin-top: 8px;
 }
 .camera-tree .node > .node {
@@ -9204,7 +9222,7 @@ nav .logout a:hover .sp {
   margin: 0;
 }
 #Grid.showMap .nvgrid-body {
-  min-height: 920px;
+  min-height: 500px;
 }
 #mask {
   position: fixed;
@@ -9243,35 +9261,35 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 42px; height:42px; */
-  background-position: -576px -445px;
+  background-position: -150px -559px;
 }
 .zoom .add:hover {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 42px; height:42px; */
-  background-position: -576px -495px;
+  background-position: -100px -559px;
 }
 .zoom .shrink {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 42px; height:42px; */
-  background-position: 0 -546px;
+  background-position: 0 -559px;
 }
 .zoom .shrink:hover {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 42px; height:42px; */
-  background-position: -50px -546px;
+  background-position: -50px -559px;
 }
 .suspend {
   cursor: pointer;
   z-index: 200;
   position: absolute;
-  right: 60px;
-  bottom: 60px;
+  right: 40px;
+  bottom: 40px;
 }
 .suspend .showContent {
   width: 360px;
@@ -9349,6 +9367,11 @@ nav .logout a:hover .sp {
   background: #fff;
   width: 100%;
 }
+#content .name {
+  width: 80px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
 #imgFrame {
   overflow: hidden;
   position: relative;
@@ -9364,13 +9387,14 @@ nav .logout a:hover .sp {
   height: 28px;
   border-radius: 50%;
   z-index: 10;
+  margin: -14px 0 0 -14px;
 }
 .cameraOne .delete {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 18px; height:18px; */
-  background-position: -550px -466px;
+  background-position: -398px -559px;
   width: 18px;
   height: 18px;
   top: -8px;
@@ -9413,7 +9437,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 28px; height:28px; */
-  background-position: -528px -248px;
+  background-position: -590px -516px;
 }
 .c20:hover,
 .c31:hover {
@@ -9421,7 +9445,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 28px; height:28px; */
-  background-position: -196px -509px;
+  background-position: -554px -516px;
 }
 .c21,
 .c32 {
@@ -9429,7 +9453,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 28px; height:28px; */
-  background-position: -304px -509px;
+  background-position: -523px -412px;
 }
 .c21:hover,
 .c32:hover {
@@ -9437,7 +9461,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 28px; height:28px; */
-  background-position: -160px -509px;
+  background-position: -272px -559px;
 }
 .c22,
 .c33 {
@@ -9445,7 +9469,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 28px; height:28px; */
-  background-position: -232px -509px;
+  background-position: -200px -559px;
 }
 .c22:hover,
 .c33:hover {
@@ -9453,7 +9477,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 28px; height:28px; */
-  background-position: -268px -509px;
+  background-position: -236px -559px;
 }
 .lost {
   margin: 0 120px 3px 0;
@@ -9484,7 +9508,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
   99% {
     -webkit-transform: rotate(90deg);
@@ -9495,7 +9519,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
   100% {
     -webkit-transform: rotate(0deg);
@@ -9506,7 +9530,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
 }
 @-moz-keyframes tree-arrow {
@@ -9515,7 +9539,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
   99% {
     -webkit-transform: rotate(90deg);
@@ -9526,7 +9550,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
   100% {
     -webkit-transform: rotate(0deg);
@@ -9537,7 +9561,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
 }
 @-o-keyframes tree-arrow {
@@ -9546,7 +9570,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
   99% {
     -webkit-transform: rotate(90deg);
@@ -9557,7 +9581,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
   100% {
     -webkit-transform: rotate(0deg);
@@ -9568,7 +9592,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
 }
 @keyframes tree-arrow {
@@ -9577,7 +9601,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
   99% {
     -webkit-transform: rotate(90deg);
@@ -9588,7 +9612,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
   100% {
     -webkit-transform: rotate(0deg);
@@ -9599,7 +9623,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
 }
 @-webkit-keyframes arrow-tree-right {
@@ -9608,7 +9632,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
   99% {
     -webkit-transform: rotate(-90deg);
@@ -9619,7 +9643,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
   100% {
     -webkit-transform: rotate(0deg);
@@ -9630,7 +9654,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
 }
 @-moz-keyframes arrow-tree-right {
@@ -9639,7 +9663,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
   99% {
     -webkit-transform: rotate(-90deg);
@@ -9650,7 +9674,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
   100% {
     -webkit-transform: rotate(0deg);
@@ -9661,7 +9685,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
 }
 @-o-keyframes arrow-tree-right {
@@ -9670,7 +9694,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
   99% {
     -webkit-transform: rotate(-90deg);
@@ -9681,7 +9705,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
   100% {
     -webkit-transform: rotate(0deg);
@@ -9692,7 +9716,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
 }
 @keyframes arrow-tree-right {
@@ -9701,7 +9725,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
   99% {
     -webkit-transform: rotate(-90deg);
@@ -9712,7 +9736,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -504px -546px;
+    background-position: -278px -609px;
   }
   100% {
     -webkit-transform: rotate(0deg);
@@ -9723,7 +9747,7 @@ nav .logout a:hover .sp {
     background-image: url(../images/pic.png);
     background-repeat: no-repeat;
     /* width: 12px; height:12px; */
-    background-position: -444px -546px;
+    background-position: -258px -609px;
   }
 }
 @-webkit-keyframes shake {
@@ -10094,14 +10118,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 16px; height:20px; */
-  background-position: -52px -596px;
+  background-position: -80px -609px;
 }
 .entry li .pic-pwd {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 16px; height:20px; */
-  background-position: -28px -596px;
+  background-position: -128px -609px;
 }
 .entry li .verLine {
   width: 1px;
@@ -10134,7 +10158,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 330px; height:42px; */
-  background-position: 0 -50px;
+  background-position: 0 -100px;
   color: #fff;
   font-size: 18px;
   margin-top: 15px;
@@ -10144,6 +10168,13 @@ nav .logout a:hover .sp {
 }
 .entry #submit span {
   font-family: "微软雅黑";
+}
+.entry #submit:hover {
+  display: inline-block;
+  background-image: url(../images/pic.png);
+  background-repeat: no-repeat;
+  /* width: 330px; height:42px; */
+  background-position: 0 -150px;
 }
 .entry .footer {
   width: 100%;
@@ -10158,12 +10189,12 @@ nav .logout a:hover .sp {
 .entry .footer .footer-bar {
   display: block;
   height: 56px;
-  width: 274px;
+  width: 360px;
   margin: 0 auto;
   display: inline-block;
   background-image: url(../images/logo.png);
   background-repeat: no-repeat;
-  /* width: 275px; height:55px; */
+  /* width: 360px; height:55px; */
   background-position: 0 -98px;
 }
 .entry .focus {
@@ -10171,21 +10202,21 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 330px; height:42px; */
-  background-position: 0 -100px;
+  background-position: 0 -50px;
 }
 .entry .focus .pic-user {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 16px; height:20px; */
-  background-position: -100px -596px;
+  background-position: -56px -609px;
 }
 .entry .focus .pic-pwd {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 16px; height:20px; */
-  background-position: -76px -596px;
+  background-position: -104px -609px;
 }
 .entry .focus input {
   color: #303b47;
@@ -10205,7 +10236,7 @@ nav .logout a:hover .sp {
 .sys-info .icon .pic- {
   height: 72px;
   /* width: 72px; height:72px; */
-  background-position: -80px -466px;
+  background-position: -576px -80px;
   margin-bottom: 10px;
 }
 .sys-info .text {
@@ -10238,14 +10269,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 16px; height:16px; */
-  background-position: -434px -284px;
+  background-position: -502px -559px;
 }
 .sys-info .text .setSite:hover {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 16px; height:16px; */
-  background-position: -410px -284px;
+  background-position: -598px -559px;
 }
 #site-set span.dropdown {
   width: 220px;
@@ -10320,21 +10351,21 @@ nav .logout a:hover .sp {
   width: 107px;
   height: 28px;
   /* width: 107px; height:28px; */
-  background-position: -453px -212px;
+  background-position: -338px -158px;
 }
 .sys-config .btn-syncData:hover {
   /* width: 107px; height:28px; */
-  background-position: -338px -212px;
+  background-position: -453px -158px;
 }
 .sys-config .btn-syncTiming {
   width: 87px;
   height: 28px;
   /* width: 87px; height:28px; */
-  background-position: -476px -344px;
+  background-position: -476px -308px;
 }
 .sys-config .btn-syncTiming:hover {
   /* width: 87px; height:28px; */
-  background-position: -238px -186px;
+  background-position: -238px -448px;
 }
 .sys-config .line {
   width: 445px;
@@ -10344,7 +10375,7 @@ nav .logout a:hover .sp {
 }
 .sys-config .nv-radio {
   display: inline-block;
-  margin: 0px 0 0px 29px;
+  /* margin:0px 0 0px 29px; */
 }
 .sys-config .nv-radio .ixpic- {
   margin: 1.5px 15px 0 0;
@@ -10357,14 +10388,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 16px; height:16px; */
-  background-position: -386px -284px;
+  background-position: -526px -559px;
 }
 .sys-config .nv-radio .ixpic-.radioSite {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 16px; height:16px; */
-  background-position: -362px -284px;
+  background-position: -550px -559px;
 }
 .sys-config .nv-checkbox .ixpic- {
   margin: 1.5px 25px 0 0;
@@ -10380,14 +10411,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -502px -284px;
+  background-position: -174px -609px;
 }
 .sys-config .nv-checkbox .ixpic-.checkSite {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -480px -284px;
+  background-position: -622px -559px;
 }
 .sys-config input {
   width: 80px;
@@ -10425,7 +10456,7 @@ nav .logout a:hover .sp {
 }
 .sys-config .displayInView .btn-syncTiming:hover {
   /* width: 87px; height:28px; */
-  background-position: -476px -344px;
+  background-position: -476px -308px;
 }
 .sys-config .button {
   width: 63px;
@@ -10436,28 +10467,28 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 63px; height:28px; */
-  background-position: -576px -409px;
+  background-position: -404px -448px;
 }
 .sys-config .button.selected {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 63px; height:28px; */
-  background-position: -576px -301px;
+  background-position: -485px -358px;
 }
 .sys-config .button:hover {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 63px; height:28px; */
-  background-position: -576px -373px;
+  background-position: -475px -448px;
 }
 .sys-config .button.selected:hover {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 63px; height:28px; */
-  background-position: -576px -337px;
+  background-position: -333px -448px;
 }
 .sys-config .storage {
   margin-left: 55px;
@@ -10476,14 +10507,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -502px -284px;
+  background-position: -174px -609px;
 }
 .sys-config .ixpic-.displayBlock {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -480px -284px;
+  background-position: -622px -559px;
 }
 .sys-config .cursor a:hover {
   cursor: default;
@@ -10493,6 +10524,12 @@ nav .logout a:hover .sp {
 }
 .sys-editUser .pwd {
   display: none;
+}
+.sys-editUser #user_type {
+  background-color: #fff;
+  color: #d0d0d0;
+  border: 1px solid #d6d6d6;
+  box-shadow: none;
 }
 .sys-createUser .pwd {
   display: block;
@@ -10564,7 +10601,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/ixpic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -46px -82px;
+  background-position: -68px -82px;
 }
 .sys-chgpriv .part.selected .ixpic- {
   display: inline-block;
@@ -10757,7 +10794,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 16px; height:16px; */
-  background-position: -338px -284px;
+  background-position: -574px -559px;
 }
 #Tree .select {
   color: #00d4de;
@@ -10801,7 +10838,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 12px; height:12px; */
-  background-position: -444px -546px;
+  background-position: -258px -609px;
 }
 #Tree li.fold > a > span.pic-expand {
   -webkit-animation: tree-arrow 0.5s;
@@ -10812,14 +10849,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 12px; height:12px; */
-  background-position: -504px -546px;
+  background-position: -278px -609px;
 }
 #Tree li.expand > a > span.pic-expand {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 12px; height:12px; */
-  background-position: -444px -546px;
+  background-position: -258px -609px;
 }
 #Tree li.rotation > a > span.pic-expand {
   -webkit-animation: arrow-tree-right 0.5s;
@@ -10830,7 +10867,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 12px; height:12px; */
-  background-position: -444px -546px;
+  background-position: -258px -609px;
 }
 #Tree li.none > a > span.pic-expand {
   visibility: hidden;
@@ -10852,14 +10889,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 18px; height:18px; */
-  background-position: -392px -546px;
+  background-position: -476px -559px;
 }
 #Tree .addZone a span:hover {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 18px; height:18px; */
-  background-position: -366px -546px;
+  background-position: -450px -559px;
 }
 #Tree input#newNode {
   margin-left: 40px;
@@ -10874,7 +10911,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 18px; height:18px; */
-  background-position: -550px -466px;
+  background-position: -398px -559px;
   margin-top: 3px;
   display: none;
 }
@@ -10883,7 +10920,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 18px; height:18px; */
-  background-position: -418px -546px;
+  background-position: -424px -559px;
 }
 #Tree .editZone {
   margin-right: 5px;
@@ -10894,7 +10931,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 18px; height:18px; */
-  background-position: -340px -546px;
+  background-position: -626px -516px;
   margin-top: 3px;
   display: none;
 }
@@ -10903,7 +10940,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 18px; height:18px; */
-  background-position: -314px -546px;
+  background-position: -372px -559px;
 }
 #Tree li:hover > .deleteZone {
   display: inline-block;
@@ -10919,14 +10956,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 70px; height:35px; */
-  background-position: -160px -466px;
+  background-position: -576px -375px;
 }
 #Grid.showZone .btn-create:hover {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 70px; height:35px; */
-  background-position: -576px -86px;
+  background-position: -576px -289px;
 }
 #Grid .nvgrid-title .grid-navbar {
   display: inline-block;
@@ -10982,7 +11019,7 @@ nav .logout a:hover .sp {
   width: 110px;
 }
 #Grid .col-desc {
-  width: 15%;
+  width: 10%;
 }
 #Grid .device-list {
   margin-top: 0;
@@ -11070,7 +11107,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 72px; height:72px; */
-  background-position: 0 -466px;
+  background-position: -576px 0;
 }
 .zoneInfo .text {
   padding: 20px 0 0 90px;
@@ -11210,14 +11247,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 11px; height:30px; */
-  background-position: -654px 0;
+  background-position: -656px -38px;
 }
 .nv-dialog.storage-edit .unit-capacity {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 11px; height:30px; */
-  background-position: -654px -38px;
+  background-position: -656px 0;
 }
 .nv-dialog.monitor-edit {
   width: 471px;
@@ -11366,7 +11403,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/ixpic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -46px -82px;
+  background-position: -68px -82px;
 }
 .cameraToZone .part.selected .ixpic- {
   display: inline-block;
@@ -11401,7 +11438,7 @@ nav .logout a:hover .sp {
 }
 .video-edit {
   width: 450px;
-  height: 290px;
+  height: 330px;
 }
 .video-edit .videoWallEdit {
   width: 450px;
@@ -11451,7 +11488,7 @@ nav .logout a:hover .sp {
   height: 150px;
   padding: 30px 20px;
   /* width: 230px; height:150px; */
-  background-position: 0 -150px;
+  background-position: -338px 0;
   color: #fff;
 }
 .store-plans .pic-del {
@@ -11462,11 +11499,11 @@ nav .logout a:hover .sp {
   height: 16px;
   position: absolute;
   /* width: 24px; height:24px; */
-  background-position: -282px -546px;
+  background-position: -366px -484px;
 }
 .store-plans .pic-del:hover {
   /* width: 24px; height:24px; */
-  background-position: -436px -509px;
+  background-position: -398px -484px;
 }
 .store-plans span {
   max-width: 112px;
@@ -11478,18 +11515,18 @@ nav .logout a:hover .sp {
 }
 .store-plans li.hasHover:hover a .pic- {
   /* width: 230px; height:150px; */
-  background-position: 0 -308px;
+  background-position: -238px -200px;
 }
 .store-plans li.hasHover:hover .pic-del {
   display: inline-block;
 }
 .store-plans .add .pic- {
   /* width: 230px; height:150px; */
-  background-position: -238px -308px;
+  background-position: 0 -358px;
 }
 .store-plans .add:hover .pic- {
   /* width: 230px; height:150px; */
-  background-position: -338px 0;
+  background-position: 0 -200px;
 }
 .store-plans .name {
   height: 20px;
@@ -11547,14 +11584,14 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 13px; height:13px; */
-  background-position: -524px -284px;
+  background-position: -217px -609px;
 }
 .store-edit .content #daysName .delete-day:hover {
   display: inline-block;
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 13px; height:13px; */
-  background-position: -545px -284px;
+  background-position: -196px -609px;
 }
 .store-edit .content #daysName .pic- {
   width: 12px;
@@ -11563,7 +11600,7 @@ nav .logout a:hover .sp {
   right: 10px;
   top: 10px;
   /* width: 8px; height:5px; */
-  background-position: -654px -89px;
+  background-position: -656px -76px;
 }
 .store-edit .content .dropdown {
   vertical-align: middle;
@@ -11654,6 +11691,9 @@ nav .logout a:hover .sp {
   height: 262px;
   border: 1px solid #baedff;
   overflow-y: auto;
+  width: 360px;
+  float: left;
+  margin-left: 40px;
 }
 .store-edit .content .more {
   display: block;
@@ -11673,7 +11713,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -458px -284px;
+  background-position: -152px -609px;
   width: 14px;
   height: 14px;
   margin-top: 10px;
@@ -11704,7 +11744,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 20px; height:35px; */
-  background-position: -626px -445px;
+  background-position: 0 -609px;
   display: none;
   position: absolute;
   left: 10px;
@@ -11715,7 +11755,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/pic.png);
   background-repeat: no-repeat;
   /* width: 20px; height:35px; */
-  background-position: 0 -596px;
+  background-position: -28px -609px;
 }
 #caseDaysPanel .ixw-body {
   width: 270px;
@@ -11754,16 +11794,46 @@ nav .logout a:hover .sp {
   width: 358px;
   height: 260px;
   overflow-y: auto;
+  overflow-x: hidden;
+}
+#caseCameraPanel .tree-node1 {
+  width: 356px;
+}
+#caseCameraPanel .zone.leaf.expanded {
+  margin-bottom: 0px;
+}
+#caseCameraPanel .tree-node2 {
+  width: 356px;
+  padding: 12px 0 8px 40px;
+}
+#caseCameraPanel .one-cameras {
+  overflow: hidden;
+}
+#caseCameraPanel .zone.leaf + div {
+  display: none;
 }
 #caseCameraPanel .type.leaf + div {
   display: none;
 }
-#caseCameraPanel .type.leaf {
+#caseCameraPanel .zone.leaf {
   background: #e5f8ff;
-  margin-top: 1px;
+  margin-bottom: 1px;
   height: 35px;
   font-size: 14px;
-  padding: 10px 10px 0;
+  padding: 10px 20px 0;
+}
+#caseCameraPanel .zone.leaf:hover {
+  background: #bfeeff;
+}
+#caseCameraPanel .type.leaf {
+  background: #fff;
+  border-bottom: 1px solid #bfeeff;
+  height: 35px;
+  font-size: 14px;
+  padding: 10px 20px 0 40px;
+}
+#caseCameraPanel .expanded + .one-cameras {
+  border-bottom: 1px solid #bfeeff;
 }
 #caseCameraPanel .type.leaf:hover {
   background: #bfeeff;
@@ -11772,6 +11842,9 @@ nav .logout a:hover .sp {
   vertical-align: top;
   font-size: 12px;
   color: #5b7f92;
+}
+#caseCameraPanel .zone.leaf.expanded + div {
+  display: block;
 }
 #caseCameraPanel .type.leaf.expanded + div {
   display: block;
@@ -11795,7 +11868,7 @@ nav .logout a:hover .sp {
   background-image: url(../images/ixpic.png);
   background-repeat: no-repeat;
   /* width: 14px; height:14px; */
-  background-position: -46px -82px;
+  background-position: -68px -82px;
 }
 #caseCameraPanel .part.selected .ixpic- {
   display: inline-block;

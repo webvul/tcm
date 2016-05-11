@@ -181,6 +181,8 @@ $XF(obj, fname) = IX.getPropertyAsFunction.
 
 	isPassword()
 	isEmail()
+	isIP()
+	isWindowsDirectory()
 	
 	trunc(len)
 	tail(len)
@@ -594,6 +596,7 @@ var FormPattern = new RegExp( '(?:<form.*?>)|(?:<\/form>)', 'img');
 var TrimPattern = /(^\s*)|\r/g;
 var ReplaceKeyPattern = /{[^{}]*}/g;
 var IpPattern = /^([0-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.([0-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.([0-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])\.([0-9]|[1-9]\d|1\d\d|2[0-4]\d|25[0-5])$/;
+var windowsDirectoryPattern = /^[^|\/\\@\^\:\?<>"\*]+$/;
 
 
 IX.extend(String.prototype, {
@@ -627,6 +630,10 @@ IX.extend(String.prototype, {
 	isIP: function(){
 		var IP = this.trim();
 		return IpPattern.test(IP);
+	},
+	isWindowsDirectory: function(){
+		var windowsDirectory = this.trim();
+		return windowsDirectoryPattern.test(windowsDirectory);
 	},
 	
 	trunc:function(len){return (this.length>len)?(this.substring(0, len-3)+"..."):this;},
@@ -14775,12 +14782,12 @@ function PageHelper(){
 		}, cbFn);
 	}
 	function _loadByState(state, cbFn){
-		var name = state.name || DefaultPageName;
+		var name = (state && state.name) || DefaultPageName;
 		var cfg = PageConfigurations[name];
 		if(!pageAuthCheckFn(name, cfg))
 			return window.alert("该页面已经失效，无法浏览。请登录之后重新尝试。")
 		isInitialized = true;
-		_loadByContext(state, resetContext, cbFn);
+		_loadByContext(state || IX.inherit(cfg, {page: getPageParams(cfg.path, cfg.path)}), resetContext, cbFn);
 	}
 	function _stateChange(e){
 		//console.log("popstate:",e, e.state);
@@ -15003,7 +15010,11 @@ function BaseLayerView(id, clz){
 	}
 	return {
 		getPanel  :function(){return _checkPanel();},
-		getBodyContainer : function(){ return $XH.first(_checkPanel(), "ixw-body");},
+		getBodyContainer : function(){ 
+			var oFragment = document.createDocumentFragment();
+			
+			return $XH.first(_checkPanel(), "ixw-body");
+		},
 		isVisible : function(){return $X(id) && ($X(id).style.display != "none");},
 		show : function(){ _checkPanel().style.display = "block";},
 		hide: function(){ $X(id) && ($X(id).style.display = "none");},
@@ -15223,6 +15234,7 @@ var t_alert = new IX.ITemplate({tpl: [
 ]});
 
 var t_info = new IX.ITemplate({tpl: [
+	'<div class="ixw-bg"></div>',
 	'<span class="content">{content}</span>',
 ]});
 

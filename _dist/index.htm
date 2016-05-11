@@ -35,6 +35,7 @@ IXW.ready("TCM.init", function(fn){
 		alert("Can't initialize page for not found init function : " + fn);
 	else
 		fn();
+	document.oncontextmenu = function(){return false;}
 });
 </script>
 </html>

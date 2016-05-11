@@ -4,7 +4,9 @@ module.exports = {
 	namespace: "TCM",
 	version: "1.0",
 
-	preless :{
+	oem: ["huaqi"],
+
+	preless : {
 		src : "./_asserts",
 		dest : "./src",
 		demoDest : "./_demo",
@@ -81,14 +83,13 @@ module.exports = {
 			files : {src : ['src/ixw/*.js']},
 			afterconcat: ['_dist/js/<%= pkg.name %>.js']
 		},
-		less :{
+		less: {
 			deploy:{
-				options: {
-					paths: ["src/less"]
-				},
-				files: {
-					"_dist/css/<%= pkg.name %>.css": "src/less/core.less"
-				}
+				expand : true,
+				cwd : "src/less",
+				src : ["<%= pkg.name %>*.less"],
+				dest : "_dist/css",
+				ext: ".css"
 			}
 		},
 		concat: {
@@ -99,7 +100,7 @@ module.exports = {
 			},
 			project :{
 				src : [
-					"src/ixw/lib/const.js","src/ixw/lib/shareData.js",
+					"src/ixw/lib/const.js","src/ixw/lib/shareData.js","src/ixw/lib/util.js",
 					"src/nvlib/model.js","src/nvlib/dialog.js",
 					"src/nvlib/ui.js", 
 					"src/nvlib/grid.js", "src/nvlib/nvgrid.js",

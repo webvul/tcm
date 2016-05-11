@@ -48,7 +48,7 @@ function getHtml4RoleInLevel(item,typeName){
 	return roleCell4LevelTpl.renderData("", {
 		name : lineInfo.getRoleName(r.id) || "预留",
 		type : lineInfo.getSiteTypeNameOfRole(r.id),
-		prompt: r.prompted ? "需要启动临时授权" :""
+		prompt: r.prompted ? "允许临时权限提升" :""
 	});
 }
 function getRoleColumnModel(typeName){return {
@@ -96,15 +96,15 @@ IX.iterate([
 ["station", function(){return getRoleColumnModel("station");}],
 ["depot", function(){return getRoleColumnModel("depot");}],
 
-["userName", {name : "name", title: "用户名称"}],
-["account", "登录名称"],
+["userName", {name : "name", title: "用户名"}],
+["account", "登录账号"],
 ["utype", function(){return getCommonColumnModel("type", "用户类型", function(item){
 	return UserTypes[item.type] || "";
 }, true);}],
 ["userSite", function(){return getCommonColumnModel("site", "所属单位", function(item){
 	return lineInfo.getSiteName(item.siteId);
 }, true);}],
-["userRole", function(){return getCommonColumnModel("role", "角色名称", function(item){
+["userRole", function(){return getCommonColumnModel("role", "用户角色", function(item){
 	return lineInfo.getRoleName(item.role);
 }, true);}],
 
@@ -142,7 +142,7 @@ IX.iterate([
 ["devChannelNum", function(){return getCommonColumnModel("channelNum", "通道数", function(item){
 	return IX.encodeTXT($XP(item, "channelNum", ""));
 });}], 
-["devVersion", function(){return getCommonColumnModel("version", "软件版本", function(item){
+["devVersion", function(){return getCommonColumnModel("version", "软件版本号", function(item){
 	return IX.encodeTXT($XP(item, "version", ""));
 },true);}],
 ["devbcPort", function(){return getCommonColumnModel("bcPort", "组播流端口", function(item){
@@ -151,7 +151,7 @@ IX.iterate([
 ["devdiskNum", function(){return getCommonColumnModel("diskNum", "硬盘数量", function(item){
 	return IX.encodeTXT($XP(item, "diskNum", ""));
 });}],
-["devCapacity", function(){return getCommonColumnModel("capacity", "存储总容量", function(item){
+["devCapacity", function(){return getCommonColumnModel("capacity", "总容量", function(item){
 	return IX.encodeTXT($XP(item, "capacity", ""))+"GB";
 });}],
 ["devPath", function(){return getCommonColumnModel("path", "对应的软件名称或网页地址", function(item){

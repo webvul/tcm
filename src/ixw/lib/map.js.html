@@ -5,14 +5,14 @@ var nvAlert = NV.Dialog.alert;
 </script>
 <tpl id="leafItem4Map">
 <div class="c{type} {chkClz}" data-key="{id}" data-type="{type}">
-	<div class="name">{name}</div>
+	<div class="name" title="{name}">{name}</div>
 	<a class="delete" data-href="$delete.cameraXY" data-key="{id}"></a>
 </div> 
 </tpl>	
 <tpl id="nodeItem4Map">
 <div class="leaf {clz}">
 	<span class="text">{name}</span>
-	<a class="nv-collapse {expClz}" data-href="$camera.expand">
+	<a class="nv-collapse {expClz}" data-href="$mapCamera.expand">
 		<span class="pic-"></span></a>
 </div>
 </tpl>
@@ -164,6 +164,20 @@ globalActionConfig([["delete.cameraXY", function(params, el){
 	view.zoom(1);
 }],["img.shrink", function(params, el){
 	view.zoom(0);
+}],["mapCamera.expand", function(params, el){
+	$XH.toggleClass(el, "expanded");
+	$XH.toggleClass(el.parentNode, "expanded");
+	var ee=$XH.ancestor(jQuery(el.parentNode).siblings(".type").get(0),"expanded");
+	if(ee){
+		$XH.toggleClass(ee, "expanded");
+		$XH.toggleClass($XH.first(ee, "nv-collapse"), "expanded");
+	}
+	var ex=$XH.ancestor(jQuery(el.parentNode).siblings(".type").get(1),"expanded");
+	if(ex){
+		$XH.toggleClass(ex, "expanded");
+		$XH.toggleClass($XH.first(ex, "nv-collapse"), "expanded");
+	}
+	jQuery(".suspend").css("top", Math.min(parseInt(jQuery(".suspend").css("top")), parseInt(jQuery("#imgFrame").css("height")) - 172) + "px");
 }]]);
 /*
 	data: {
@@ -254,8 +268,13 @@ function viewData4Show(viewData, mapEl){
 		});
 	}
 	function zoom(status){
-		if(!$X("image").src)
+		if (!$X("image").src)
 			return;
+		if (jQuery('#imgFrame').width() > viewData.width || jQuery('#imgFrame').height() > viewData.height){
+			mapEl.width = viewData.width;
+			mapEl.height = viewData.height;
+			return; 
+		}
 		var w, h;
 		if(status === 1){
 			w = Math.min(widthMap * 1.2, widthMax);
@@ -272,8 +291,10 @@ function viewData4Show(viewData, mapEl){
 			isSmall = false;
 	    centerX = Math.min(Math.max(centerX * w / widthMap, widthFrame/2), widthMap - widthFrame/2);
 	    centerY = Math.min(Math.max(centerY * h / heightMap, heightFrame/2), heightMap - heightFrame/2);
-	    widthMap = mapEl.width = w;
-	    heightMap = mapEl.height = h;
+	    widthMap = w;
+	    heightMap = h;
+	    mapEl.width = w;
+	    mapEl.height = h;
 	    setPosition();
 	}
 	function scrollIt(event){
@@ -298,8 +319,8 @@ function viewData4Show(viewData, mapEl){
 		centerX = widthFrame/2;
 		centerY = heightFrame/2;
 		IX.iterate(_data.cameras, function(camera, idx){
-			var minWidth = Math.min(_data.width - 40, camera.x);
-			var minHeight = Math.min(_data.height - 40, camera.y);
+			var minWidth = Math.min(_data.width, camera.x);
+			var minHeight = Math.min(_data.height, camera.y);
 			positionHT[camera.id] = {top: minHeight, left: minWidth, multipleX: minWidth / widthMax, multipleY: minHeight / heightMax};
 		});
 		setPosition();
@@ -317,8 +338,8 @@ function viewData4Show(viewData, mapEl){
 		},
 		refresh: function(newData){
 			mapData.resetData(newData);
+			viewData = newData;
 			_initData();
-			setPosition();
 		},
 		scrollIt: scrollIt,
 		zoom: zoom,
@@ -381,9 +402,15 @@ function bindCamera4Drag(){
 	var offsetX, offsetY;
 	jQuery(".lost").draggable({
 		helper: "clone",
+		cancel: ".name",
 		start: function(event, ui){
-			offsetX = event.offsetX;
-			offsetY = event.offsetY;
+			if ($XH.hasClass(event.toElement, "name")){
+				offsetX = event.offsetX + 32;
+				offsetY = event.offsetY + 6;
+			}else{
+				offsetX = event.offsetX;
+				offsetY = event.offsetY;
+			}
 			jQuery(".suspend").css({visibility: "hidden"});
 			ui.helper.css("visibility", "visible");
 		},
@@ -395,7 +422,7 @@ function bindCamera4Drag(){
 				.addClass('cameraOne')
 				.appendTo(".fix")
 				.attr({"style": 
-					"top:"+Math.min(Math.max(0, event.pageY - el.top - offsetY), el.height-34)+"px; left:"+Math.min(Math.max(0, event.pageX - el.left - offsetX), el.width-34)+"px;"
+					"top:"+Math.min(Math.max(0, event.pageY - el.top - offsetY + 14), el.height-30)+"px; left:"+Math.min(Math.max(0, event.pageX - el.left - offsetX + 14), el.width-30)+"px;"
 				});
 			$this.draggable("destroy");
 			if($parent.find(".lost").length === 1){
@@ -427,6 +454,10 @@ function showTigger(params){
 				var el = $XH.ancestor(e.target, "type");
 				jQuery(el).siblings(".type").removeClass("expanded");
 				$XH.toggleClass(el, "expanded");
+				jQuery(".suspend").css("top", Math.min(parseInt(jQuery(".suspend").css("top")), parseInt(jQuery("#imgFrame").css("height")) - 172) + "px");
+			},
+			mousedown : function(e){
+				e.cancelBubble = true;
 			}
 		});
 		bindCamera4Drag();
@@ -528,7 +559,7 @@ function Map(container, params, isOCC){
 			deviceCaller("getMap", params, function(data){
 				if(!data.url){
 					if(isOCC){
-						jQuery(".nvgrid-body").html("");
+						jQuery(".nvgrid-body").html("").css("height", jQuery("#Tree").height());
 						return nvAlert("该分区暂未上传地图！");
 					}else
 						nvAlert("地图不存在，请上传地图！");

@@ -61,7 +61,7 @@
 			.node{border-bottom: 1px solid #baedff;}
 			.node:last-child{border-bottom: none;}
 		}
-		.showMonitor{height: 262px; border: 1px solid #baedff; overflow-y: auto;}
+		.showMonitor{height: 262px; border: 1px solid #baedff; overflow-y: auto; width: 360px; float: left; margin-left: 40px;}
 		.more{display: block; width: 360px; height: 35px; background: #75dbff; padding-right: 10px; text-indent: 10px;
 			span{line-height: 35px; color: #fff;}
 			.add{float: right;.x-pic;.x-pic-ico-add-plan;width:14px;height:14px;margin-top:10px;}
@@ -75,18 +75,27 @@
 .camera-move{width: 20px; height: 35px; top: 200px; .x-pic; .x-pic-camera-move; display: none; position: absolute; left: 10px; z-index: 50000;}
 .camera-move:hover{.x-pic; .x-pic-camera-move-hover;}
 #caseDaysPanel .ixw-body{width: 270px; border: 1px solid #5edbff; background: #fff; overflow: hidden; padding: 10px; height: 120px;font-size:12px;
-	.nv-checkbox{margin-right: 5px; }
+	.nv-checkbox{margin-right: 5px;}
 	.text{vertical-align: top;}
 	.leaf{padding-top: 10px;}
 	.leaf{float: left;}
 }
 .useCamera{float: left; margin-left: 40px;}
 #caseCameraPanel{width: 360px; float: left; margin-left: 40px; height: 350px; display: none;
-	&>div{border: 1px solid #5edbff; width: 358px; height: 260px; overflow-y: auto;}
+	&>div{border: 1px solid #5edbff; width: 358px; height: 260px; overflow-y: auto; overflow-x: hidden;}
+	.tree-node1{width: 356px;}
+	.zone.leaf.expanded{margin-bottom: 0px;}
+	.tree-node2{width: 356px; padding: 12px 0 8px 40px;}
+	.one-cameras{overflow: hidden;}
+	.zone.leaf+div{display: none;}
 	.type.leaf+div{display: none;}
-	.type.leaf{background: #e5f8ff; margin-top: 1px; height: 35px; font-size: 14px; padding: 10px 10px 0;}
+	.zone.leaf{background: #e5f8ff; margin-bottom: 1px; height: 35px; font-size: 14px; padding: 10px 20px 0;}
+	.zone.leaf:hover{background:#bfeeff;}
+	.type.leaf{background: #fff; border-bottom: 1px solid #bfeeff; height: 35px; font-size: 14px; padding: 10px 20px 0 40px;}
+	.expanded+.one-cameras{border-bottom: 1px solid #bfeeff;}
 	.type.leaf:hover{background:#bfeeff;}
 	.text{vertical-align: top;font-size:12px;color: #5b7f92;}
+	.zone.leaf.expanded+div{display: block;}
 	.type.leaf.expanded+div{display: block;}
 	.pic-{float: right;}
 	.item{float: left; width: 150px; font-size: 12px; margin: 3px 0;}

@@ -13,7 +13,7 @@ var getComboHTML = NV.Lib.getComboHTML;
 var cameraTree = TCM.Lib.CameraTree;
 var getCheckboxHTML = NV.Lib.getCheckboxHTML;
 var getNodeName = TCM.DeviceType.getNodeName;
-var driverId = TCM.Const.DriverId;
+var DriverList = TCM.Const.DriverList;
 </script>
 
 <tpl id="deleteMsg">
@@ -89,7 +89,7 @@ var driverId = TCM.Const.DriverId;
 	<li class="spliters"><span class="labelOne">备注</span>
 		<span><input maxlength="150" id="device_desc" value="{device_desc}" tabindex="2"></span></li>
 	<li class="spliters"><span class="labelOne">数据位</span>{dataBitCombo}</li><tpl id="relatedDecoders">
-		<li class="spliters loopDecoder"><span class="labelOne">通道{i}关联解码器</span>{relatedDecoders}</li>
+		<li class="spliters loopDecoder"><span class="labelOne">通道{i}关联解码器</span>{relatedDecoders}
 	</tpl>
 	<input id="device_type" value="{device_type}" style="display: none;">
 </ul>
@@ -161,6 +161,29 @@ var driverId = TCM.Const.DriverId;
 	<li><span class="label">厂家及型号</span>{driverCombo}
 		<span class="label labelTwo">备注</span>
 		<span><input maxlength="150" id="device_desc" value="{device_desc}" tabindex="7"></span></li>
+		<input id="device_type" value="{device_type}" style="display: none;">
+</ul>
+</tpl>
+
+<tpl id="editSpecialDecoder">
+<ul class="{clz}">
+	<li><span class="label">设备名称</span>
+		<span><input maxlength="64" id="device_name" value="{device_name}" tabindex="1"></span>
+		<span class="label labelTwo">用户名</span>
+		<span><input maxlength="15" id="device_username" value="{device_username}" tabindex="4"></span></li>
+	<li><span class="label">IP地址</span>
+		<span><input maxlength="15" id="device_ip" value="{device_ip}" tabindex="2"></span>
+		<span class="label labelTwo">密码</span>
+		<span><input maxlength="15" id="device_password" value="{device_password}" tabindex="5"></span></li>
+	<li><span class="label">端口号</span>
+		<span><input maxlength="5" id="device_port" value="{device_port}" tabindex="3"></span>
+		<span class="label labelTwo">通道数</span>
+		<span><input maxlength="4" id="device_channelNum" value="{device_channelNum}" tabindex="6"></span></li>
+	<li><span class="label">厂家及型号</span>{driverCombo}
+		<span class="label labelTwo">最大画面数</span>
+		<span><input maxlength="4" id="device_maxWindow" value="{device_maxWindow}" tabindex="7"></span></li>
+	<li><span class="label">备注</span>
+		<span><input maxlength="150" id="device_desc" value="{device_desc}" tabindex="8"></span></li>
 		<input id="device_type" value="{device_type}" style="display: none;">
 </ul>
 </tpl>
@@ -277,11 +300,10 @@ function checkIfIP(s){
 	return s.isIP();
 }
 function checkName(s){
-	var re = RegExp(/[\/]+/); 
-	return !re.test(s);
+	return s.isWindowsDirectory();
 }
 var DataAreaCheckers = {
-	"name" : {fn: checkName, text: "设备名称中不允许出现特殊字符/"},
+	"name" : {fn: checkName, text: "设备名称中请勿包含\\/^:*><|@?\"特殊字符！"},
 	"ip" : {fn: checkIfIP, text: "请输入正确的IP地址，例如：192.168.0.1"},
 	"dataIp" : {fn: checkIfIP, text: "请输入正确的IP地址，例如：192.168.0.1"},
 	"manageIp" : {fn: checkIfIP, text: "请输入正确的IP地址，例如：192.168.0.1"},
@@ -290,6 +312,7 @@ var DataAreaCheckers = {
 	"channelNum" : {fn: checkIfInt, text: "通道数须为大于0的整数！"},
 	"capacity" : {fn: checkIfNum, text: "总容量须为大于0的数字！"},
 	"diskNum" : {fn: checkIfInt, text: "磁盘数量须为大于0的整数！"},
+	"maxWindow" : {fn: checkIfInt, text: "画面数必须为大于0的整数！"},
 	"port" : {fn: checkIfPort, text: "请输入正确的端口号，端口号范围：0~65535"}
 };
 function verifyValue(name, value){
@@ -365,8 +388,8 @@ function gatherBc(channelNum){
 	for (var k = 0; k < channelNum; k++) {
 		var addr = $X("device_bcAddr"+(k+1)).value;
 		var port = $X("device_bcPort"+(k+1)).value;
-		if (!addr.isIP()) {
-			nvAlert("通道"+(k+1)+"的IP格式错误！");
+		if (!checkIfBc(addr)) {
+			nvAlert("通道"+(k+1)+"的组播流地址，范围：224.0.0.0~239.255.255.255");
 			return false;
 		}
 		if (!checkIfPort(port)) {
@@ -404,8 +427,9 @@ function gatherInfo(rowModel, checkers, types){
 	if (data.type == deviceType.Coder) {
 		data.channelNum = data.channelNum - 0;
 		var bc = gatherBc(data.channelNum);
-		ifChanged = JSON.stringify(bc) !== JSON.stringify(rowModel.get("bc"));
 		if (!bc) return;
+		if (rowModel)
+			ifChanged = ifChanged || (JSON.stringify(bc) !== JSON.stringify(rowModel.get("bc")));
 		data.bc = JSON.stringify(bc);
 	}
 	if (!ifChanged) {
@@ -468,6 +492,7 @@ function _editUnit(rowModel, cfg, okFn, types, siteId){
 		return nvAlert("该设备类型未定义驱动,无法执行相关操作！");
 	if (!contentData && IX.Array.isFound(types[0], CameraTypes))
 		return nvAlert("请添加编码器后，再添加模拟摄像机！");
+	// console.log("show-cfg "+ new Date().getTime());
 	showDialog({
 		clz : cfg.clz,
 		title : cfg.title,
@@ -574,10 +599,11 @@ function getDriverHTML(id, type, driverId){
 		valueText: driverId ? provider : result[0].provider,
 		items: IX.map(result, function(item, idx){
 			return IX.inherit(item, {
-				name: item.provider
+				name: item.provider,
+				action: "driver.pick"
 			});
 		})
-	});
+	}, "driver.pick");
 }
 
 function getZoneComboHTML(id, zoneId, zones){
@@ -599,7 +625,9 @@ function getAllNotRelated(type, cbFn){
 			cbFn(data);
 		});
 	} else if (IX.Array.isFound(type, [deviceType.RedirectPickup, deviceType.OmnidirectPickup, deviceType.VDM])) {
+		// console.log("send :" + new Date().getTime());
 		return deviceCaller("getAllNotRelatedCameras", {type: type}, function(data){
+			// console.log("back :" + new Date().getTime());
 			cbFn(data);
 		});
 	} else if (IX.Array.isFound(type, IPCTypes)) {
@@ -640,6 +668,12 @@ function refreshLoopDecoder(){
 			return acc;
 		}));
 	});
+}
+//更改driver时更改设备参数默认值
+function setParams(name, pass, port){
+	jQuery("#device_username").val(name);
+	jQuery("#device_password").val(pass);
+	jQuery("#device_port").val(port);
 }
 
 globalActionConfig([["pick.coder", function(params, el){//模拟摄像机关联编码器选择
@@ -773,6 +807,24 @@ globalActionConfig([["pick.coder", function(params, el){//模拟摄像机关联�
 	baseChangeCombo(type, name, el);
 	var ulEl = $XD.ancestor($XH.ancestor(el, "dropdown"), "ul");
 	ulEl.className = type == 64 ? "PDU-edit" : "edit";
+}],["driver.pick", function(params, el){
+	var id = params.key, name = el.innerHTML;
+	// driver关联设备类型为20,21,22,50的用户名与密码端口号
+	if(jQuery(".IPC-edit").length > 0 || jQuery(".coder-edit").length > 0 || jQuery(".decoder-edit").length > 0){
+		var getDriverFn = TCM.Device.getDriver;
+		for (var i = 0; i < DriverList.length; i++) {
+			var driver = getDriverFn(id);
+			if (driver.name == DriverList[i].name && driver.provider == DriverList[i].provider && driver.style == DriverList[i].style)
+				setParams(DriverList[i].username, DriverList[i].password, DriverList[i].port);
+		}
+	}
+	// 关联结束
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	inputEl.value = id;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
 }]]);
 
 var notRelatedDecoders = [];
@@ -882,6 +934,14 @@ var DeviceDialogCfg = {
 		tpl : t_editDecoder,
 		checkers : getCheckers([ChooseChecker[4], ChooseChecker[0], ChooseChecker[1], ChooseChecker[5], ChooseChecker[6],
 			{name : "channelNum", key: "device_channelNum", empty : "设备通道数"}
+		])
+	},
+	specialDecoder: {
+		clz : "decoder-edit",
+		tpl : t_editSpecialDecoder,
+		checkers : getCheckers([ChooseChecker[4], ChooseChecker[0], ChooseChecker[1], ChooseChecker[5], ChooseChecker[6],
+			{name : "channelNum", key: "device_channelNum", empty : "设备通道数"},
+			{name : "maxWindow", key : "device_maxWindow", empty : "通道最大画面数"}
 		])
 	},
 	monitor: {
@@ -1040,7 +1100,7 @@ function getTplData(rowModel, data, types, result){
 	}	
 	data.cameraId = '<input type="hidden" id="device_id" value="'+data.device_id+'">';
 	data.clz = theType == 64 ? "PDU-edit" : "edit";
-	if (IX.Array.isFound(theType, [10, 50, 51, 52, 65]))
+	if (IX.Array.isFound(theType, [10, 50, 51, 52, 55, 65]))
 		data.driverCombo = getDriverHTML("device_driverId", theType, data.device_driverId);
 	if (IX.Array.isFound(theType, [20, 21, 22]))
 		data.driverCombo = getDriverHTML("device_driverId", 202122, data.device_driverId);
@@ -1065,6 +1125,7 @@ TCM.DeviceDialog.editDevice = function(rowModel, okFn, siteId){
 
 TCM.DeviceDialog.createDevice = function(types, okFn, siteId){
 	var key = getNodeName(types[0]);
+	// console.log("start :" + new Date().getTime());
 	getAllNotRelated(types[0], function(result){
 		_editUnit(null, IX.inherit(DeviceDialogCfg[key], {
 			title : "添加设备",
@@ -1073,14 +1134,12 @@ TCM.DeviceDialog.createDevice = function(types, okFn, siteId){
 				return getTplData(rowModel, data, types, result);
 			}
 		}), okFn, types, siteId);
+		var getDriverFn = TCM.Device.getDriver;
 		var driverVal = jQuery("#device_driverId").attr("value");
-		if(jQuery(".decoder-edit").length > 0 && driverVal == driverId.JS_decoder){
-			jQuery("#device_port").attr("value", "6000");
-		}
-		if(jQuery(".IPC-edit").length > 0 || jQuery(".coder-edit").length > 0){
-			if(driverVal == driverId.DH_host_IPC || driverVal == driverId.DH_host_coder){
-				jQuery("#device_port").attr("value", "37777");
-			}
+		for (var i = 0; i < DriverList.length; i++) {
+			var driver = getDriverFn(driverVal);
+			if (driver.name == DriverList[i].name && driver.provider == DriverList[i].provider && driver.style == DriverList[i].style)
+				jQuery("#device_port").attr("value", DriverList[i].port);
 		}
 	});
 };
@@ -1153,7 +1212,7 @@ TCM.TreeDialog.addZone = function(params, el, CurrentSite){
 		if (IX.isEmpty(name))
 			return nvAlert("分区名称不能为空！");
 		if (!checkName(name))
-			return nvAlert("分区名称允许出现特殊字符/");
+			return nvAlert("分区名称请勿包含\\/^:*><|@?\"特殊字符！");
 		deviceCaller("addZone", {name: name}, function(data){
 			addZoneOkFn(data, CurrentSite);
 			hideDialog();
@@ -1176,7 +1235,7 @@ TCM.TreeDialog.editZone = function(params, el, CurrentSite){
 		if (IX.isEmpty(newName))
 			return nvAlert("新分区名称不能为空！");
 		if (!checkName(newName))
-			return nvAlert("分区名称允许出现特殊字符/");
+			return nvAlert("分区名称请勿包含\\/^:*><|@?\"特殊字符！");
 		deviceCaller("editZone", {id : id, name: newName}, function(data){
 			jQuery(".tree-node").next().children("li").each(function(){
 				var zoneA = jQuery(this).children("a").first();

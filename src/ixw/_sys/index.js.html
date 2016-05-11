@@ -190,7 +190,18 @@ function showSysRole(cbFn){
 function showSysLevel(cbFn){
 	var grid = null; 
 	grid = createSysGrid(IX.inherit(GridCfgs.level, {
-		actions : [["edit", "编辑", function(rowModel, rowEl){
+		actions : [["reset", "重置", function(rowModel, rowEl){
+			if (jQuery(rowEl).find(".col-role-name").html() == "预留") 
+				return NV.Dialog.alert("此级别已为预留位，无需重置！");
+			if (IX.Array.isFound(rowModel.getId(), [1,2,3,4,5,6,7,8,9,10,11,12]))
+				return NV.Dialog.alert("系统预置优先级不能重置！");
+			NV.Dialog.confirm("提示", "是否重置此级别优先级？", function(hideDialog){
+				sysCaller("resetLevel", {id: rowModel.getId()}, function(data){
+					hideDialog();
+					grid.refresh();
+				});
+			});
+		}],["edit", "编辑", function(rowModel, rowEl){
 			sysDialog.editLevel(rowModel, function(){
 				grid.refresh();
 			});
@@ -238,7 +249,7 @@ function showUsers(cbFn){
 </script>
 <tpl id="config">
 <div class="nv-box sys-config">
-	<div class="nv-title">系统配置</div>
+	<div class="nv-title">系统设置</div>
 	<div class="nv-body">
 		<div class="area">
 			<h3>数据配置同步设置</h3>
@@ -263,15 +274,15 @@ function showUsers(cbFn){
 			<div class="area">
 				<h3>系统校时设置</h3>
 				<div class="item sum">
-					<h6>校时方式选择</h6>
-					<div>
+					<h6 class="display">校时方式选择</h6>
+					<div class="display">
 						<a data-href="$sys.checkRS422" class="nv-radio rs422 {rs422Clz}">
 							<span class="ixpic- {radioSite}"></span><span>启用RS－422方式</span>
 						</a>
 					</div>
 					<div>
 						<a data-href="$sys.checkNTP" class="nv-radio ntp {ntpClz}">
-							<span class="ixpic- {radioSite}"></span><span>启用NTP服务器</span>
+							<span style="display: none" class="ixpic- {radioSite}"></span><span>NTP服务器</span>
 						</a>
 						<span><input id="ntp-ip" value="{ntpIP}" {hostAttr}/></span>
 						<span>端口</span>
@@ -366,9 +377,9 @@ function getTpldata4Config(){
 		scheduleTime : JSON.parse($XP(sysConfigData,"TimingSetting")).schedule||"01:00:00",
 		rs422Clz : getCheckedClz("TimingSetting","useRS422"),
 		ntpClz : getCheckedClz("TimingSetting","useNTP"),
-		ntpIP :  JSON.parse($XP(sysConfigData, "TimingSetting")).ntpIP,
+		ntpIP :  JSON.parse($XP(sysConfigData, "TimingSetting")).ntpIP || "",
 		hostAttr : enableNTP? "": "disabled",
-		ntpPort :  JSON.parse($XP(sysConfigData,"TimingSetting")).ntpPort,
+		ntpPort :  JSON.parse($XP(sysConfigData,"TimingSetting")).ntpPort || 123,
 		portAttr : enableNTP? "": "disabled",
 		tvsClz : getCheckedClz("ServerBackupSetting","backupTVS"),
 		ssClz : getCheckedClz("ServerBackupSetting","backupSS"),

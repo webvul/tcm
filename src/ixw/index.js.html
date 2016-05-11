@@ -5,6 +5,26 @@ var ixwActions = IXW.Actions;
 
 var SiteTypes = TCM.Const.SiteTypes;
 var UserTypes = TCM.Const.UserTypes;
+
+var kickChecker = new TCM.Util.PeriodicChecker("", function(isStarted, cbFn){
+	TCM.Global.commonCaller("isKicked", "", function(data){
+		if (data && data.status === 1) {
+			return NV.Dialog.confirm4login("提示", "有新管理员登录系统，请您退出！",{
+				left : [],
+				right : [{name : "ok",text : "确定"}]
+			},function(){
+				clearSession();
+			});
+		}
+		isStarted = true;
+		cbFn();
+	});
+}, 1);
+
+function startChecker(){
+	kickChecker.stop();
+	kickChecker.start();
+}
 </script>
 <tpl id="page">
 	<nav class="navbar navbar-inverse navbar-fixed-top">
@@ -251,6 +271,7 @@ var navMgr = new NavManager();
 function clearSession(){
 	sessionMgr = new SessionManager();
 	TCM.LineInfo.destroy();
+	kickChecker.stop();
 	IXW.Pages.load("entry");
 }
 function startSession(data){
@@ -263,6 +284,7 @@ function startSession(data){
 		sitename : nowSite
 	});
 	navMgr.enableHover();
+	startChecker();
 }
 var PagesConfiurations = IX.map([
 //{type?, name+, path?, bodyClz?, needAuth?},
@@ -380,6 +402,7 @@ TCM.Env.getSession = function(){return sessionMgr;};
 TCM.Env.canUpdateLineInfo = function(){
 	return sessionMgr.checkIfModuleEnabled("lineInfo");
 };
+TCM.Env.isKicked = function(){kickChecker.stop();};
 
 var appInitialized = false;
 TCM.init = function(){

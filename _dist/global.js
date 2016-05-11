@@ -55,12 +55,19 @@ TCM.Global.commonCaller = function(name, params, cbFn, failFn){
 	case "session" :
 		/**	cbFn({id,name,type,siteId, lineInfo:{
 			id, name, 
+			
 			levels:[{id,level,name,depot:{id,prompted},station:{id:prompted}}],
 			roles:[{id,name,siteType,promptable}], 
 			sites:[{id,name,type,no,desc}]
 		}})
 		 */
 		return setTimeout(function(){cbFn(Test.getSessionData());}, 100);
+	case "isKicked" :
+		/**	cbFn({
+			status: 1 || other
+		})
+		 */
+		return setTimeout(function(){cbFn(Test.isKicked());}, 5000);
 	}
 };
 
@@ -125,6 +132,11 @@ TCM.Global.sysCaller = function(name, params, cbFn, failFn){
 		*/ 
 		setTimeout(function(){cbFn(Test.editUserLevel(params));}, 100);
 		break;
+	case "resetLevel" :
+		/* params : {id}
+		*/ 
+		setTimeout(function(){cbFn(Test.resetLevel(params));}, 100);
+		break;
 	case "getUsers":
 		/* params : {pageNo, pageSize}
 		 cbFn({total, items:[{id,name,account,type,siteId,desc,role:roleId,access}])
@@ -135,7 +147,7 @@ TCM.Global.sysCaller = function(name, params, cbFn, failFn){
 		/* params : {password, desc,account, name,type,role:roleId,access}	 
 			cbFn({id, siteId, desc, account, name,type,role:roleId,access})
 		*/
-		setTimeout(function(){cbFn(Test.addUser(params));}, 100);
+		setTimeout(function(){cbFn(Test.createUser(params));}, 100);
 		break;
 	case "editUser" :
 		/* params : {id, desc, name,account, type,role:roleId,access}*/ 
@@ -301,25 +313,30 @@ TCM.Global.deviceAndZoneCaller = function(name, params, cbFn, failFn){
 		break;
 	case "getVideoWalls" :
 		/*  params : [{siteId}]
-			cbFn([{id,monitor:{id,name,ip}, spliter:{id,name,ip},decoder{id,name,ip}}])
+			cbFn([{id,monitor:{id,name,ip}, spliter:{id,name,ip},decoder:{id,name,ip}, specialDecoder:{id,name,ip}}])
 		*/
 		setTimeout(function(){cbFn(Test.getVideoWalls(params));},100);
 		break;
 	case "getVideoWall" :
 		/* params : {id : videoWallId}  
-			cbFn({id,monitor:{id,name,ip}, decoder{id,name,ip},spliter:{id,name,ip}, notRelatedDecoder:[{id,name,ip}],notRelatedMonitor:[{id,name,ip}], notRelatedSpliter:[{id,name,ip}]})
+			cbFn({id,monitor:{id,name,ip}, decoder{id,name,ip},spliter:{id,name,ip}, 
+				notRelatedDecoder:[{id,name,ip}],
+				notRelatedMonitor:[{id,name,ip}], 
+				notRelatedSpliter:[{id,name,ip}],
+				notRelatedSpecialDecoder:[{id,name,ip}]
+			})
 		*/
 		setTimeout(function(){cbFn(Test.getVideoWall(params));},100);
 		break;
 	case "addVideoWall" :
-		/* params : {monitor:id, spliter:id, decoder:id}//spliter与decoder有且仅有一个
-			cbFn({id,monitor:{id,name,ip}, spliter:{id,name,ip},decoder{id,name,ip}})
+		/* params : {monitor:id, spliter:id, decoder:id}//spliter、decoder、specialDecoder有且仅有一个
+			cbFn({id,monitor:{id,name,ip}, spliter:{id,name,ip},decoder:{id,name,ip},specialDecoder:{id,name,ip}})
 		 */	
 		setTimeout(function(){cbFn(Test.addVideoWall(params));},100);
 		break;
 	case "editVideoWall":
 		/* params : {id, monitor:id, spliter:id, decoder:id}
-			cbFn({id,monitor:{id,name,ip}, spliter:{id,name,ip},decoder{id,name,ip}})
+			cbFn({id,monitor:{id,name,ip}, spliter:{id,name,ip},decoder:{id,name,ip}, specialDecoder:{id,name,ip}})
 		 */
 		setTimeout(function(){cbFn(Test.editVideoWall(params));},100);	
 		break;
@@ -399,7 +416,7 @@ TCM.Global.storeCaller = function(name, params, cbFn, failFn){
 		/*  给出当前站点的所有存储服务器和未指定计划的摄像机
 			params:{siteId}
 			cbFn({storages:[{id, name}],
-				cameras : [{id, name, type}]})
+				zones: [{cameras : [{id, name, type}], name}]})
 		*/
 		setTimeout(function(){cbFn(Test.getDevices4Plan(params.siteId));},100);
 		break;

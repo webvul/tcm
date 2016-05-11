@@ -1,6 +1,5 @@
 <script>
 var globalActionConfig = IXW.Actions.configActions;
-var driverId = TCM.Const.DriverId;
 </script>
 <tpl id="leafItem">
 <div class="leaf {clz}">
@@ -45,46 +44,6 @@ var driverId = TCM.Const.DriverId;
 <script>
 globalActionConfig([["nvcombo.pick", function(params,el){
 	var id = params.key, name = el.innerHTML;
-	// driver关联设备类型为20,21,22,50的用户名与密码端口号
-	if(jQuery(".IPC-edit").length > 0 || jQuery(".coder-edit").length > 0){
-		switch(id){
-			case driverId.DH_host_IPC :
-			case driverId.DH_host_coder :
-				setParams("admin", "admin", "37777");
-				break;
-			case driverId.YS_host_IPC :
-			case driverId.YS_host_coder :
-				setParams("admin", "admin", "0");
-				break;
-			case driverId.AXS_rtsp_IPC :
-			case driverId.AXS_rtsp_coder :
-				setParams("root", "pass", "554");
-				break;
-			case driverId.DH_rtsp_IPC :
-			case driverId.DH_rtsp_coder :
-			case driverId.YS_rtsp_IPC :
-			case driverId.YS_rtsp_coder :
-				setParams("admin", "admin", "554");
-				break;
-			case driverId.AVS_IPC :
-			case driverId.AVS_coder :
-				setParams("admin", "admin", "4060");
-				break;
-			case driverId.NKF_rtsp_IPC :
-			case driverId.NKF_rtsp_coder :
-				setParams("admin", "", "554");
-				break;
-			default :
-				setParams("admin", "admin", "");
-				break;
-		}
-	}
-	if (jQuery(".decoder-edit").length > 0) {
-		if (id == driverId.JS_decoder) {
-			setParams("admin", "admin", "6000");
-		}
-	}
-	// 关联结束
 	var dropdownEl = $XH.ancestor(el, "dropdown");
 	if (!dropdownEl) return;
 	var inputEl = $XD.first(dropdownEl, "input");
@@ -110,12 +69,6 @@ globalActionConfig([["nvcombo.pick", function(params,el){
 	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
 	nameEl.innerHTML = name;
 }]]);
-function setParams(name, pass, port){
-	jQuery("#device_username").attr("value",name);
-	jQuery("#device_password").attr("value",pass);
-	jQuery("#device_port").attr("value",port);
-}
-
 function getComboHTML(id, cfg, action){return t_combo.renderData("", IX.inherit({
 	valueId : id,
 	comboId : id + "_combo"

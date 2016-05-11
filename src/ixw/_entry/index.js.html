@@ -15,9 +15,13 @@
 <script>
 var ixwPages = IXW.Pages;
 IXW.Actions.configActions([["login", function(){
+	var account = $X('account').value;
+	var password = $X('password').value;
+	if (!(account.isWindowsDirectory() && password.isWindowsDirectory()))
+		return NV.Dialog.alert("账号密码中请勿包含\\/^:*><|@?\"特殊字符！");
 	TCM.Global.entryCaller("login", {
-		username : $X('account').value,
-		password : $X('password').value
+		username : account,
+		password : password
 	}, function(data){
 		TCM.Env.resetSession(data);
 		ixwPages.load("");
@@ -59,13 +63,16 @@ TCM.Entry.init = function(pageCfg, pageParams, cbFn){
 		}
 	});
 	var aEl = $X("submit");
+	$X('account').focus();
 	jQuery('#account').bind("keydown", function(e){
 		if ( e.which == 13)
 			$X('password').focus();
 	});	
-	jQuery(".container").keydown(function(event){
+	jQuery("#password").keydown(function(event){
 		if(event.keyCode == 13){
 			aEl.click();
+			$X('account').blur();
+			$X('password').blur();
 		}
 	});
 

@@ -55,7 +55,7 @@ var DeviceTypeNums = {
 		provider: "泰科",
 		ip: "192.168.5.",
 		port: 0,
-		desc: "数字固定枪机",
+		desc: "数字固定枪机kjlas;kjdf;laskjd;flkasjdflkahkdljfhalkjsfhdlkahdflajhdlfkajhdflkjahdflkjhadklfhj",
 		version: "1.0",
 		channelNum: 1,
 		bcAddr: "224.169.1.", 
@@ -204,6 +204,19 @@ var DeviceTypeNums = {
 		provider: "DELL",
 		ip: "192.168.10.",
 		desc: "控制终端"
+	}},
+	55: {num: 17, tpl: {
+		name: "解码器(带画面分割)",
+		type: 55,
+		style: "S-60D-SD",
+		provider: "NKF",
+		ip: "192.168.9.",
+		port: 1,
+		desc: "解码器(带画面分割)",
+		version: "1.0",
+		driverId: 1,
+		channelNum: 2,
+		maxWindow: 4
 	}},
 	65: {num: 5, tpl: {
 		name: "字符叠加器",
@@ -362,14 +375,20 @@ function SiteDevices(site){
 		});
 	}
 	
-	createCommonDevice([0, 1, 2, 3, 51, 54], {});
+	createCommonDevice([0, 1, 2, 3, 51, 54, 55], {});
 
 	createCommonDevice([10], {capacity: Math.floor(Math.random()*5 + 1)});
 
 	createCommonDevice([52], {
 		maxWindow: [1, 2, 4, 9, 16][Math.floor(Math.random() * 5)],
 		driverId: Math.floor(Math.random() * 5),
-		decoders: [{id: 100, name: "解码器-1"},null,{id: 101, name: "解码器-2"},{id: 102, name: "解码器-3"},{id: 103, name: "解码器-4"}]
+		decoders: [
+			{id: 100, name: "解码器-1", relatedSpliterChannel: 1, channel: 1},
+			null,
+			{id: 101, name: "解码器-2", relatedSpliterChannel: 2, channel: 2},
+			{id: 102, name: "解码器-3", relatedSpliterChannel: 3, channel: 3},
+			{id: 103, name: "解码器-4", relatedSpliterChannel: 4, channel: 2}
+		]
 	});
 
 
@@ -521,6 +540,8 @@ function SiteDevices(site){
 		var arr = [];
 		var allCameras = DevicesHT.getByKeys(getDeviceIdsByTypes([20, 21, 22, 31, 32, 33]));
 		IX.iterate(allCameras, function(obj){
+			if (!obj)
+				return;
 			if(obj.zoneId == null && obj.id){
 				arr.push({
 					id: obj.id,
@@ -579,9 +600,9 @@ function SiteDevices(site){
 
 	//列出所有设备
 	function getAllDevices(siteId){
-		var DevicesTypes = [1, 2, 3, 10, 20, 21, 22, 31, 32, 33, 40, 41, 50, 51, 52, 53, 54, 60, 61, 62, 63, 64, 65, 90];
+		var DevicesTypes = [1, 2, 3, 10, 20, 21, 22, 31, 32, 33, 40, 41, 50, 51, 52, 53, 54, 55, 60, 61, 62, 63, 64, 65, 90];
 		if(siteType == 1)
-			DevicesTypes = [0, 1, 2, 3, 10, 51, 52, 53, 54, 60, 61, 62, 63, 64, 90];
+			DevicesTypes = [0, 1, 2, 3, 10, 51, 52, 53, 54, 55, 60, 61, 62, 63, 64, 90];
 		var allDevices = [];
 		for (var i = 0; i < DevicesTypes.length; i++) {
 			allDevices.push({
@@ -630,7 +651,9 @@ function SiteDevices(site){
 		var itemIds = Devices4All.get(51);
 		var objs = DevicesHT.getByKeys(itemIds);
 		return {notRelatedDecoders: IX.loop(objs, [], function(acc, obj){
-			acc.push({id: obj.id, name: obj.name});
+			acc.push({id: obj.id, name: obj.name, notRelatedChannels: IX.map("0".multi(obj.channel).split(""), function(item, idx){
+				return idx+1;
+			})});
 			return acc;
 		})};
 		// return {notRelatedDecoders: []};
@@ -681,6 +704,7 @@ var result = [];
 var monitor = DevicesHT.getByKeys(Devices4All.get(53));
 var spliter = DevicesHT.getByKeys(Devices4All.get(52));
 var decoder = DevicesHT.getByKeys(Devices4All.get(51));
+var specialDecoder = DevicesHT.getByKeys(Devices4All.get(55));
 	function getVideoWalls(params){
 		// result = []
 		// for (var i = 0; i < 3; i++) {
@@ -706,6 +730,7 @@ var decoder = DevicesHT.getByKeys(Devices4All.get(51));
 	function getVideoWall(params){
 		if($XP(params,"id")||$XP(params,"id")==0){
 			return {id: result[params.id-1].id, monitor: result[params.id-1].monitor, spliter: result[params.id-1].spliter||{}, decoder: result[params.id-1].decoder||{},
+				specialDecoder: result[params.id-1].specialDecoder || {}, relatedChannel: result[params.id-1].relatedChannel || "",
 				notRelatedMonitor:IX.loop(DevicesHT.getByKeys(Devices4All.get(53)), [], function(acc, monitor){
 					var flag=true;
 					for(var i=0;i<result.length;i++){
@@ -723,7 +748,7 @@ var decoder = DevicesHT.getByKeys(Devices4All.get(51));
 							flag=false;
 					}
 					if(flag)
-						acc.push(spliter);
+						acc.push(IX.inherit(spliter, {channels: [1, 2, 3]}));
 					return acc;
 				}),
 				notRelatedDecoder:IX.loop(DevicesHT.getByKeys(Devices4All.get(51)), [], function(acc, decoder){
@@ -733,12 +758,22 @@ var decoder = DevicesHT.getByKeys(Devices4All.get(51));
 							flag=false;
 					}
 					if(flag)
-						acc.push(decoder);
+						acc.push(IX.inherit(decoder, {channels: [6, 1, 3]}));
+					return acc;
+				}),
+				notRelatedSpecialDecoder: IX.loop(DevicesHT.getByKeys(Devices4All.get(55)), [], function(acc, specialDecoder){
+					var flag = true;
+					for (var i = 0; i < result.length; i++) {
+						if(result[i].specialDecoder&&result[i].specialDecoder.id==specialDecoder.id)
+							flag=false;
+					}
+					if(flag)
+						acc.push(IX.inherit(specialDecoder, {channels: [4, 2, 3]}));
 					return acc;
 				})
 			};
 		}else{
-			return {monitor: {}, spliter: {}, decoder: {}, 
+			return {monitor: {}, spliter: {}, decoder: {}, specialDecoder: {}, relatedChannel: "",
 				notRelatedMonitor:IX.loop(DevicesHT.getByKeys(Devices4All.get(53)), [], function(acc, monitor){
 					var flag=true;
 					for(var i=0;i<result.length;i++){
@@ -756,7 +791,7 @@ var decoder = DevicesHT.getByKeys(Devices4All.get(51));
 							flag=false;
 					}
 					if(flag)
-						acc.push(spliter);
+						acc.push(IX.inherit(spliter, {channels: [1, 2, 3]}));
 					return acc;
 				}),
 				notRelatedDecoder:IX.loop(DevicesHT.getByKeys(Devices4All.get(51)), [], function(acc, decoder){
@@ -766,7 +801,17 @@ var decoder = DevicesHT.getByKeys(Devices4All.get(51));
 							flag=false;
 					}
 					if(flag)
-						acc.push(decoder);
+						acc.push(IX.inherit(decoder, {channels: [1, 2, 4]}));
+					return acc;
+				}),
+				notRelatedSpecialDecoder: IX.loop(DevicesHT.getByKeys(Devices4All.get(55)), [], function(acc, specialDecoder){
+					var flag = true;
+					for (var i = 0; i < result.length; i++) {
+						if(result[i].specialDecoder&&result[i].specialDecoder.id==specialDecoder.id)
+							flag=false;
+					}
+					if(flag)
+						acc.push(IX.inherit(specialDecoder, {channels: [1, 3, 6]}));
 					return acc;
 				})
 			};
@@ -782,15 +827,16 @@ var decoder = DevicesHT.getByKeys(Devices4All.get(51));
 		if(params.spliter){
 			var x2=IX.loop(spliter, [], function(acc, spl){
 				if(spl.id==params.spliter)
-				acc.push(spl);
+					acc.push(spl);
 			return acc;
 			});
 			obj={
 				id:result.length+1,
 				monitor:x1[0],
-				spliter:x2[0]
+				spliter:x2[0],
+				relatedChannel: 1
 			}
-		}else{
+		}else if(params.decoder){
 			var x3=IX.loop(decoder, [], function(acc, dec){
 				if(dec.id==params.decoder)
 				acc.push(dec);
@@ -799,7 +845,20 @@ var decoder = DevicesHT.getByKeys(Devices4All.get(51));
 			obj={
 				id:result.length+1,
 				monitor:x1[0],
-				decoder:x3[0]
+				decoder:x3[0],
+				relatedChannel: 2
+			}
+		}else {
+			var x4=IX.loop(specialDecoder, [], function(acc, dec){
+				if(dec.id==params.specialDecoder)
+				acc.push(dec);
+			return acc;
+			});
+			obj={
+				id:result.length+1,
+				monitor:x1[0],
+				specialDecoder:x4[0],
+				relatedChannel: 4
 			}
 		}
 		result.push(obj);
@@ -828,9 +887,10 @@ var decoder = DevicesHT.getByKeys(Devices4All.get(51));
 			obj={
 				id:params.id,
 				monitor:x1[0],
-				spliter:x2[0]
+				spliter:x2[0],
+				relatedChannel: 1
 			}
-		}else{
+		}else if(params.decoder){
 			var x3=IX.loop(decoder, [], function(acc, dec){
 				if(dec.id==params.decoder)
 				acc.push(dec);
@@ -839,7 +899,20 @@ var decoder = DevicesHT.getByKeys(Devices4All.get(51));
 			obj={
 				id:params.id,
 				monitor:x1[0],
-				decoder:x3[0]
+				decoder:x3[0],
+				relatedChannel: 2
+			}
+		}else {
+			var x4=IX.loop(specialDecoder, [], function(acc, dec){
+				if(dec.id==params.specialDecoder)
+				acc.push(dec);
+			return acc;
+			});
+			obj={
+				id:params.id,
+				monitor:x1[0],
+				specialDecoder:x4[0],
+				relatedChannel: 5
 			}
 		}
 		result[params.id-1]=obj;
@@ -978,7 +1051,7 @@ Test.getAllCameras = function(){
 };
 Test.getCamerasByNoZone = function(){
 	var site = Test.getCurrentSite();
-	var siteDevices = siteDevicesHT.get(site.id);
+	var siteDevices = siteDevicesHT.get(site.id || site[0].id);
 	return siteDevices.getCamerasByNoZone();
 };
 Test.addCamerasToZone = function(params){
@@ -1145,7 +1218,7 @@ var drivers = IX.map("0".multi(20).split(""), function(item, idx){
 		id: idx,
 		provider: "大华海信大华海信大华海信大华海信".slice(Math.floor(Math.random() * 5), Math.floor(Math.random() * 5+5)),
 		style: "akdaskdkweiohgvkasjdhegjljh".slice(Math.floor(Math.random() * 5), Math.floor(Math.random() * 15 +5)),
-		type: [10,202122,33,50,51,52,65][Math.floor(Math.random() * 8)]
+		type: [10,202122,33,50,51,52,55,65][Math.floor(Math.random() * 8)]
 	}
 });
 

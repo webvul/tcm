@@ -253,6 +253,7 @@ Test.getLineInfo = function(){return IX.inherit(Line,{sites : Sites});};
 Test.getUsers = function(params){
 	return getPagedData(Users.admin.concat(Users.users), $XP(params, "pageNo", 0), $XP(params, "pageSize", 20));
 };
+Test.resetLevel = function(params){return true;};
 
 Test.createUser = function(info){
 	var adminUser = Users.admin, users = Users.users;
@@ -362,9 +363,14 @@ Test.getDevices4Plan = function(siteId){
 			return {id : idx, name : "存储设备" + idx};
 		})
 	}, siteId != 1 ? {
-		cameras : IX.map("0".multi(Math.floor(Math.random()*100)+1).split(""),function(cId, idx){
-			return {id: 10 + idx, name : "摄像机" + 10 + idx, type: [20,21,22][Math.floor(Math.random()*3)]};
-		})
+		zones: []/*IX.map(Test.getAllZones()[0].zones, function(zone){
+			return {
+				name: zone.name,
+				cameras : IX.map("0".multi(Math.floor(Math.random()*10)+1).split(""),function(cId, idx){
+					return {id: Math.floor(Math.random()*10000)+1 + idx, name : "摄像机" + 10 + idx, type: [20,21,22][Math.floor(Math.random()*3)]};
+				})
+			};
+		})*/
 	} : {
 		monitors : IX.map("0".multi(Math.floor(Math.random()*10)+1).split(""),function(cId, idx){
 			return {id: idx+100, name : "监视器" + 100 + idx, type: 53};
@@ -442,5 +448,10 @@ Test.hasData = function(){
 	return {
 		msg : Math.floor(Math.random()*200 % 5) == 0? "此站点有数据存在，不能修改！": ""
 	};
-}
+};
+Test.isKicked = function(){
+	return {
+		status: 0
+	};
+};
 })();

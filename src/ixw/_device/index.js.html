@@ -20,6 +20,9 @@ var drivers = null;
 
 var spliterHTML = null;
 var decoderHTML = null;
+var specialDecoderHTML = null;
+var videoWallData = null;
+var channelHTML = null;
 // input搜索框暂未使用
 </script>
 <tpl id="input"><div><input class="search" placeholder="设备选择"><a class="pic-search"></a></div></tpl>
@@ -198,6 +201,7 @@ var DeviceGridCfgs = {
 	"pickup" : {columns: "devType,devName,devProvider,devStyle,devDesc"},
 	"coder" : {columns: "devName,Provider,Style,devIp,devPort,devChannelNum,devDesc"},
 	"decoder" : {columns: "devName,Provider,Style,devIp,devPort,devChannelNum,devDesc"},
+	"specialDecoder" : {columns: "devName,Provider,Style,devIp,devPort,devChannelNum,devDesc"},
 	"spliter" : {columns: "devName,Provider,Style,devMaxWindow,devDesc"},
 	"monitor" : {columns: "devName,devProvider,devStyle,devDesc"},
 	"terminal" : {columns: "devName,devIp,devDesc"},
@@ -239,7 +243,7 @@ function parseTree(treeInfo, countHT, siteId) {
 			return IX.inherit(treeNode, getAttr(treeNode));
 		});
 	}
-	function getAttr(treeNode){
+	function getAttr(treeNode){	
 		if(treeNode.key)
 			return {
 				key : treeNode.key,
@@ -278,17 +282,19 @@ var TreeInfo = [
 	{name : '模拟摄像机', nodes : getLeafInfo([31, 32, 33])},
 	{name : '拾音器', nodes : getLeafInfo([40, 41])},
 	getLeafInfo([50])[0],
-	getLeafInfo([51])[0],
-	getLeafInfo([52])[0],
+	// getLeafInfo([51])[0],
+	getLeafInfo([55])[0],
+	// getLeafInfo([52])[0],
 	getLeafInfo([53])[0],
 	getLeafInfo([54])[0],
-	getLeafInfo([65])[0],
+	// getLeafInfo([65])[0],
 	{name : '网络和附属设备', nodes : getLeafInfo([60, 61, 62, 63, 64, 90])}
 ]}];
 var CurrentOne = {name: "", nodes: [
 	{name : '服务器', nodes : getLeafInfo([0, 1, 2, 3])},
 	getLeafInfo([10])[0],
-	getLeafInfo([51])[0],
+	// getLeafInfo([51])[0],
+	getLeafInfo([55])[0],
 	getLeafInfo([53])[0],
 	getLeafInfo([54])[0],
 	{name : '网络和附属设备', nodes : getLeafInfo([60, 61, 62, 63, 64, 90])}
@@ -451,7 +457,8 @@ function showZoneList(cbFn){
 <ul class="videoWallEdit">
 	<li><span class="label">监视器</span>{relatedMonitor}</li>
 	<li><span class="label">关联的设备类型</span>{relatedSD}</li>
-	<li><span class="label choose">关联设备</span>{relatedSDR}</li>
+	<li><span class="label choose">关联设备名称</span>{relatedSDR}</li>
+	<li><span class="label channel">关联设备通道号</span>{relatedChannel}</li>
 </ul>
 </tpl>
 
@@ -483,21 +490,67 @@ function showZoneList(cbFn){
 
 <script>
 var videoWallHT = new IX.IListManager();
+
+function getChannelItems(channel, deviceId, list){
+	var arr = [], isEmpty = true;	
+	arr = IX.loop(list, [], function(acc, device, idx){
+		if (device.id == deviceId) {
+			acc = [];
+			if (!IX.Array.isFound(channel, device.channels))
+				device.channels.unshift(channel);
+			for (var i = 0; i < device.channels.length; i++) {
+				acc.push({
+					id: device.channels[i],
+					name: device.channels[i]
+				});
+			}
+			isEmpty = false;
+		} else {
+			if (channel) 
+				acc = [{id: channel, name: channel}];
+		}
+		return acc;
+	});
+	if (isEmpty && deviceId)
+		list.unshift(videoWallData.spliter || videoWallData.decoder ||videoWallData.specialDecoder);
+	return arr;
+}
+
+function getRelatedChannelHTML(channel, deviceId, mark){
+	var items = [];
+	if (mark == "1") 
+		items = getChannelItems(channel, deviceId, videoWallData.notRelatedSpliter);
+	else if (mark == "2")
+		items = getChannelItems(channel, deviceId, videoWallData.notRelatedDecoder);
+	else 
+		items = getChannelItems(channel, deviceId, videoWallData.notRelatedSpecialDecoder);
+	return getComboHTML("device_relatedChannel", {
+		value: channel || "",
+		valueText: channel || "",
+		items: items
+	});
+}
 /*电视墙的添加和修改dialog显示*/
 function _show(site, okFn, data, isEdit){
+	videoWallData = data;
 	if (isEdit) {
 		data.notRelatedMonitor.unshift(data.monitor);
-		if(data.spliter.id)
-			data.notRelatedSpliter.unshift(data.spliter);
-		if(data.decoder.id)
-			data.notRelatedDecoder.unshift(data.decoder);
+		if(data.spliter.id) 
+			channelHTML = getRelatedChannelHTML(data.spliter.relatedChannel, data.spliter.id, "1");
+		if(data.decoder.id) 
+			channelHTML = getRelatedChannelHTML(data.decoder.relatedChannel, data.decoder.id, "2");
+		if(data.specialDecoder.id) 
+			channelHTML = getRelatedChannelHTML(data.specialDecoder.relatedChannel, data.specialDecoder.id, "3");
+	}else {
+		channelHTML = getRelatedChannelHTML("", "", "");
 	}
 	if (!isEdit && data.notRelatedMonitor.length === 0)
 		return nvAlert("请添加监视器后再添加电视墙！");
-	if (!isEdit && isOCC && data.notRelatedDecoder.length === 0)
+	// if (!isEdit && isOCC && (data.notRelatedDecoder.length === 0 || data.notRelatedSpecialDecoder.length === 0))
+	// 	return nvAlert("没有可用的解码器！");
+	if (!isEdit && (/*data.notRelatedSpliter.length === 0 || data.notRelatedDecoder.length === 0 || */data.notRelatedSpecialDecoder.length === 0))
 		return nvAlert("没有可用的解码器！");
-	if (!isEdit && data.notRelatedSpliter.length === 0 && data.notRelatedDecoder.length === 0)
-		return nvAlert("没有可用的画面分割器或解码器！");
+		//return nvAlert("没有可用的画面分割器或解码器！");
 	function comboHTML(caller, name, items){
 		return getComboHTML(caller, {
 			value: name.id || "",
@@ -505,35 +558,53 @@ function _show(site, okFn, data, isEdit){
 			items: IX.map(items, function(item){
 				return {
 					id: item.id,
-					name: item.name
+					name: item.name,
+					action: "pick.device"
 				};
 			})
 		});
 	}
 	spliterHTML = comboHTML("device_spliter", data.spliter, data.notRelatedSpliter);
 	decoderHTML = comboHTML("device_decoder", data.decoder, data.notRelatedDecoder);
+	specialDecoderHTML = comboHTML("device_specialDecoder", data.specialDecoder, data.notRelatedSpecialDecoder);
 	var SDR = null;
 	if (isEdit && data.spliter.id)
 		SDR = spliterHTML;
+	else if(isEdit && data.specialDecoder.id)
+		SDR = specialDecoderHTML;
 	else
 		SDR = decoderHTML;
 	var items = [{
 		id: 1,
 		name: "画面分割器",
-		action : "pick.one"
+		action: "pick.one"
 	},{
 		id: 2,
 		name: "解码器",
-		action : "pick.one"
+		action: "pick.one"
+	},{
+		id: 3,
+		name: "解码器",
+		action: "pick.one"
 	}];
 	var html = t_videoEdit.renderData("", {
-		relatedMonitor: comboHTML("device_monitor", data.monitor, data.notRelatedMonitor),
-		relatedSD: getComboHTML("device_choose", {
-			value : data.spliter.id? 1: 2,
-			valueText : data.spliter.id? "画面分割器": "解码器" ,
-			items : isOCC? [items[1]]: items
+		relatedMonitor: getComboHTML("device_monitor", {
+			value: data.monitor.id || "",
+			valueText: data.monitor.name || "",
+			items: IX.map(data.notRelatedMonitor, function(item){
+				return {
+					id: item.id,
+					name: item.name
+				};
+			})
 		}),
-		relatedSDR: SDR
+		relatedSD: getComboHTML("device_choose", {
+			value : /*data.spliter.id? 1 : (data.specialDecoder.id? 3 : 2)*/ 3,
+			valueText : /*data.spliter.id? "画面分割器" : (data.specialDecoder.id? "解码器(画)": "解码器" )*/"解码器",
+			items : /*isOCC? [items[1], items[2]]: */[items[2]]
+		}),
+		relatedSDR: /*SDR*/specialDecoderHTML,
+		relatedChannel: channelHTML
 	});
 	function _okFn(){
 		if(!isHandle)
@@ -542,10 +613,14 @@ function _show(site, okFn, data, isEdit){
 		inputData.monitor = $X("device_monitor").value;
 		inputData.spliter = $X("device_spliter") ? $X("device_spliter").value : "";
 		inputData.decoder = $X("device_decoder") ? $X("device_decoder").value : "";
+		inputData.specialDecoder = $X("device_specialDecoder") ? $X("device_specialDecoder").value : "";
+		inputData.relatedChannel = $X("device_relatedChannel") ? $X("device_relatedChannel").value : "";
 		if(inputData.monitor==="")
 			return nvAlert("请选择相应的监视器！");
-		else if(inputData.spliter===""&&inputData.decoder==="")
+		else if(inputData.spliter===""&&inputData.decoder===""&&inputData.specialDecoder==="")
 			return nvAlert("监视器至少关联一个解码器或画面分割器！");
+		else if(inputData.relatedChannel === "" && $X("device_choose").value == "3")
+			return nvAlert("关联设备的通道数不能为空！");
 		inputData.id = data.id ? data.id : "";
 		deviceCaller(isEdit ? "editVideoWall" : "addVideoWall", inputData, function(result){
 			okFn(result);
@@ -577,7 +652,7 @@ function _editVideo(video, okFn){
 }
 /*获取电视墙显示数据*/
 function getVideoTpldata(video){
-	var c = video.spliter || video.decoder;
+	var c = video.spliter || video.decoder || video.specialDecoder;
 	return IX.inherit(video, {
 		monitorName : video.monitor.name,
 		monitorProvider : video.monitor.provider?video.monitor.provider:"",
@@ -612,7 +687,7 @@ globalActionConfig([["video.add", function(params, el){
 	var video = videoWallHT.get(videoId);
 	if (!video)
 		return;
-	confirmDialog("删除电视墙", "请确认是否删除此电视？",  function(cbFn){
+	confirmDialog("删除电视墙", "请确认是否删除此电视墙？",  function(cbFn){
 		deviceCaller("deleteVideoWall", {ids : [video.id]}, function(){
 			videoWallHT.remove(videoId);
 			var liEl = el.parentNode;
@@ -625,6 +700,7 @@ globalActionConfig([["video.add", function(params, el){
 	var dropdownEl = $XH.ancestor(el, "dropdown");
 	if (!dropdownEl) return;
 	var inputEl = $XD.first(dropdownEl, "input");
+	if (inputEl.value == id) return;
 	inputEl.value = id;
 	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
 	nameEl.innerHTML = name;
@@ -632,8 +708,26 @@ globalActionConfig([["video.add", function(params, el){
 	$chooseEl.next().remove();
 	if(id == "1")
 		jQuery(spliterHTML).insertAfter($chooseEl);
-	else
+	else if(id == "2")
 		jQuery(decoderHTML).insertAfter($chooseEl);
+	else 
+		jQuery(specialDecoderHTML).insertAfter($chooseEl);
+	var $channel = jQuery(".channel");
+	$channel.next().remove();
+	jQuery(getRelatedChannelHTML("", "", $X("device_choose").value)).insertAfter($channel);
+
+}], ["pick.device", function(params, el){
+	var id = params.key, name = el.innerHTML;
+	var dropdownEl = $XH.ancestor(el, "dropdown");
+	if (!dropdownEl) return;
+	var inputEl = $XD.first(dropdownEl, "input");
+	if (inputEl.value == id) return;
+	inputEl.value = id;
+	var nameEl = $XH.first($XH.first(dropdownEl, "dropdown-toggle"), "name");
+	nameEl.innerHTML = name;
+	var $channel = jQuery(".channel");
+	$channel.next().remove();
+	jQuery(getRelatedChannelHTML("", id, $X("device_choose").value)).insertAfter($channel);
 }]]);
 /*展示电视墙*/
 function showWall(params, isHandle){
@@ -710,7 +804,7 @@ function showVideoWall(cbFn){
 IX.ns("TCM.Device");
 TCM.Device.init = function(pageCfg, pageParams, cbFn){
 	/*页面加载时获取driver，供设备使用*/
-	if(!drivers){
+	if (!drivers) {
 		deviceCaller("getDriver", {}, function(data){
 			drivers = data;
 			IX.iterate(data, function(item, idx){
